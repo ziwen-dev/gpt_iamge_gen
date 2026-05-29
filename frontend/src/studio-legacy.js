@@ -8,9 +8,11 @@ const $ = (id) => document.getElementById(id);
     const RECORD_REFRESH_MS = 5000;
     const GENERATION_PROGRESS_MS = 60000;
     const GENERATION_TAIL_MS = 30000;
+    const LOCKED_IMAGE_SIZE = "1024x1024";
+    const LOCKED_IMAGE_QUALITY = "";
     const TYPE_TEXTS = [
       "将文字想法转化为清晰画面。",
-      "选择风格、尺寸和画质后提交任务。",
+      "选择风格后提交任务。",
       "生成过程会进入记录列表，稍后即可查看结果。",
       "也可以上传参考图，进行海报、产品图和视觉方案设计。",
     ];
@@ -178,8 +180,7 @@ const $ = (id) => document.getElementById(id);
     }
 
     function currentRatioLabel() {
-      const el = document.querySelector('input[name="ratio"]:checked');
-      return el && el.nextElementSibling ? el.nextElementSibling.textContent.trim() : "";
+      return LOCKED_IMAGE_SIZE;
     }
 
     function buildPrompt() {
@@ -192,22 +193,17 @@ const $ = (id) => document.getElementById(id);
 
     function updateSubmitSummary() {
       const style = currentStylePrompt() || "默认";
-      const ratio = currentRatioLabel() || checkedValue("ratio") || "默认尺寸";
-      const quality = currentQualityLabel();
-      $("submitSummary").textContent = `将按${style}风格生成 · ${ratio}`;
-      $("mobileSettingSummary").textContent = `${style} · ${ratio} · ${quality}`;
+      $("submitSummary").textContent = `将按${style}风格生成`;
+      $("mobileSettingSummary").textContent = style;
     }
 
     function currentQualityLabel() {
-      const el = document.querySelector('input[name="quality"]:checked');
-      return el && el.nextElementSibling ? el.nextElementSibling.textContent.trim() : "标准";
+      return "标准";
     }
 
     function saveGenerationSettings(notify = true) {
       const settings = {
         style: checkedValue("style"),
-        ratio: checkedValue("ratio"),
-        quality: checkedValue("quality"),
       };
       localStorage.setItem(GENERATION_SETTINGS_STORAGE, JSON.stringify(settings));
       updateSubmitSummary();
@@ -225,8 +221,6 @@ const $ = (id) => document.getElementById(id);
       try {
         const settings = JSON.parse(localStorage.getItem(GENERATION_SETTINGS_STORAGE) || "{}");
         if (settings.style) setCheckedValue("style", settings.style);
-        if (settings.ratio) setCheckedValue("ratio", settings.ratio);
-        if (Object.prototype.hasOwnProperty.call(settings, "quality")) setCheckedValue("quality", settings.quality);
       } catch (_) {}
     }
 
@@ -784,10 +778,10 @@ const $ = (id) => document.getElementById(id);
       const body = {
         prompt,
         // 尺寸字段按后端 /api/generate 支持的 size 参数直接传入。
-        size: checkedValue("ratio") || "3840x2160",
+        size: LOCKED_IMAGE_SIZE,
         n: "1",
       };
-      const quality = checkedValue("quality");
+      const quality = LOCKED_IMAGE_QUALITY;
       if (quality) body.quality = quality;
 
       const genBtn = $("btn-gen");
@@ -832,8 +826,8 @@ const $ = (id) => document.getElementById(id);
       const fd = new FormData();
       fd.append("prompt", prompt);
       // 编辑接口同样使用后端支持的 size 字段，保持生成与编辑参数一致。
-      fd.append("size", checkedValue("ratio") || "3840x2160");
-      const quality = checkedValue("quality");
+      fd.append("size", LOCKED_IMAGE_SIZE);
+      const quality = LOCKED_IMAGE_QUALITY;
       if (quality) fd.append("quality", quality);
       fd.append("n", "1");
 
@@ -887,7 +881,7 @@ const $ = (id) => document.getElementById(id);
 
     function initEvents() {
       $("prompt").addEventListener("input", updatePromptCount);
-      document.querySelectorAll('input[name="style"], input[name="ratio"], input[name="quality"]').forEach((radio) => {
+      document.querySelectorAll('input[name="style"]').forEach((radio) => {
         radio.addEventListener("change", () => {
           updateSubmitSummary();
           saveGenerationSettings(false);

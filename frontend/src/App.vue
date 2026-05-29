@@ -105,7 +105,7 @@ onUnmounted(() => disposeStudio());
             <button type="button" class="soft-btn mobile-nav-link" data-tab-target="settings">调整</button>
           </div>
           <div class="seg-grid" style="--cols:1">
-            <div class="seg-option"><span id="mobileSettingSummary">写实 · 3840x2160 · 高清</span></div>
+            <div class="seg-option"><span id="mobileSettingSummary">写实</span></div>
           </div>
           <button type="button" class="primary-btn mobile-generate-btn action-pulse" id="btn-gen" style="margin-top:14px;">✦ 生成图像</button>
           <div class="msg" id="msg-gen"></div>
@@ -225,30 +225,15 @@ onUnmounted(() => disposeStudio());
           </div>
         </div>
 
-        <div class="field-block">
-          <span class="field-label">输出尺寸</span>
-          <div class="seg-grid" style="--cols:3">
-            <label class="seg-option"><input type="radio" name="ratio" value="3840x2160" checked /><span>3840x2160</span></label>
-            <label class="seg-option"><input type="radio" name="ratio" value="1536x1024" /><span>1536x1024</span></label>
-            <label class="seg-option"><input type="radio" name="ratio" value="1024x1024" /><span>1024x1024</span></label>
-          </div>
-        </div>
-
-        <div class="field-block">
-          <span class="field-label">画质</span>
-          <div class="seg-grid" style="--cols:3">
-            <label class="seg-option"><input type="radio" name="quality" value="" /><span>标准</span></label>
-            <label class="seg-option"><input type="radio" name="quality" value="high" checked /><span>高清</span></label>
-            <label class="seg-option"><input type="radio" name="quality" value="hd" /><span>超清</span></label>
-          </div>
-        </div>
+        <input type="hidden" name="ratio" value="1024x1024" />
+        <input type="hidden" name="quality" value="" />
 
         <div class="field-block">
           <button type="button" class="ghost-btn" id="btnSaveSettings">保存设置</button>
         </div>
 
         <div class="field-block">
-          <div class="cost" id="submitSummary">将按写实风格生成 · 3840x2160</div>
+          <div class="cost" id="submitSummary">将按写实风格生成</div>
           <div class="cost">消耗 1 积分</div>
         </div>
 
