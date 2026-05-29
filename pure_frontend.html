@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>GPT Image · 纯前端</title>
+  <style>
+    :root {
+      --bg0: #e8f2ff;
+      --bg1: #f5f9ff;
+      --card: rgba(255, 255, 255, 0.82);
+      --card-border: rgba(120, 160, 220, 0.35);
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #0b6cff;
+      --accent2: #00c8ff;
+      --glow: rgba(11, 108, 255, 0.35);
+      --success: #059669;
+      --danger: #dc2626;
+      --radius: 16px;
+      --shadow: 0 12px 40px rgba(15, 80, 180, 0.12);
+      --font: "Segoe UI", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(900px 500px at 80% -10%, rgba(0, 200, 255, 0.18), transparent 55%),
+        radial-gradient(700px 400px at 10% 0%, rgba(11, 108, 255, 0.15), transparent 50%),
+        linear-gradient(165deg, var(--bg0), var(--bg1) 45%, #eef6ff);
+      background-attachment: fixed;
+    }
+
+    .wrap {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: clamp(1rem, 4vw, 2rem);
+      padding-bottom: max(2rem, env(safe-area-inset-bottom));
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    header h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 4.5vw, 1.85rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      background: linear-gradient(120deg, var(--accent), var(--accent2), #7c3aed);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    header p {
+      margin: 0.5rem 0 0;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .warn {
+      font-size: 0.8rem;
+      color: #b45309;
+      background: rgba(251, 191, 36, 0.2);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      border-radius: 12px;
+      padding: 0.65rem 0.85rem;
+      margin-bottom: 1rem;
+      line-height: 1.45;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+    }
+    @media (min-width: 720px) {
+      .grid-2 { grid-template-columns: 1fr 1fr; }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      padding: clamp(1rem, 3vw, 1.25rem);
+    }
+
+    label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    input[type="text"],
+    input[type="password"],
+    input[type="url"],
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid rgba(100, 140, 200, 0.45);
+      border-radius: 12px;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.95rem;
+      background: rgba(255, 255, 255, 0.95);
+      color: var(--text);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--glow);
+    }
+    textarea { min-height: 100px; resize: vertical; }
+
+    .row-inline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      align-items: center;
+      margin-top: 0.35rem;
+    }
+    .row-inline label { margin: 0; text-transform: none; letter-spacing: 0; font-weight: 500; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1.2rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+      touch-action: manipulation;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-primary {
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), #0050d4 45%, var(--accent2));
+      box-shadow: 0 8px 24px rgba(11, 108, 255, 0.35);
+    }
+    .btn-primary:hover:not(:disabled) {
+      box-shadow: 0 10px 28px rgba(11, 108, 255, 0.45);
+    }
+    .btn-ghost {
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--accent);
+      border: 1px solid rgba(11, 108, 255, 0.35);
+    }
+
+    .actions { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+
+    .msg {
+      font-size: 0.88rem;
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      border-radius: 10px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .msg.err {
+      color: #991b1b;
+      background: rgba(254, 202, 202, 0.6);
+      border: 1px solid rgba(248, 113, 113, 0.5);
+    }
+    .msg.ok {
+      color: #065f46;
+      background: rgba(167, 243, 208, 0.5);
+      border: 1px solid rgba(52, 211, 153, 0.45);
+    }
+
+    /* 生图等待动画 */
+    .loading-wrap {
+      display: none;
+      margin-top: 1rem;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.55);
+    }
+    .loading-wrap.active { display: block; }
+
+    .loading-inner {
+      padding: 1.25rem 1rem;
+      text-align: center;
+    }
+    .loading-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 0.25rem;
+    }
+    .loading-sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    .orbit {
+      position: relative;
+      width: min(200px, 55vw);
+      height: min(200px, 55vw);
+      margin: 0 auto 1rem;
+    }
+    .orbit-core {
+      position: absolute;
+      inset: 28%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #fff, rgba(200, 230, 255, 0.9) 40%, var(--accent2));
+      box-shadow: 0 0 40px rgba(0, 200, 255, 0.45), inset 0 0 20px rgba(255, 255, 255, 0.8);
+      animation: corePulse 2s ease-in-out infinite;
+    }
+    .orbit-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      border-top-color: var(--accent);
+      border-right-color: rgba(124, 58, 237, 0.5);
+      animation: spin 1.8s linear infinite;
+    }
+    .orbit-ring.r2 {
+      inset: 12%;
+      animation-duration: 2.6s;
+      animation-direction: reverse;
+      border-top-color: var(--accent2);
+      border-right-color: rgba(11, 108, 255, 0.4);
+    }
+    .orbit-dots span {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      top: 50%;
+      left: 50%;
+      margin: -4px;
+      opacity: 0.85;
+      animation: dotOrbit 3s linear infinite;
+    }
+    .orbit-dots span:nth-child(1) { animation-delay: 0s; }
+    .orbit-dots span:nth-child(2) { animation-delay: -1s; }
+    .orbit-dots span:nth-child(3) { animation-delay: -2s; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes corePulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.06); opacity: 0.92; }
+    }
+    @keyframes dotOrbit {
+      from { transform: rotate(0deg) translateX(min(90px, 25vw)) rotate(0deg); }
+      to { transform: rotate(360deg) translateX(min(90px, 25vw)) rotate(-360deg); }
+    }
+
+    .shimmer-bar {
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(11, 108, 255, 0.15), rgba(0, 200, 255, 0.35), rgba(124, 58, 237, 0.35), rgba(11, 108, 255, 0.15));
+      background-size: 200% 100%;
+      animation: shimmer 1.8s ease-in-out infinite;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .result {
+      margin-top: 1rem;
+    }
+    .result img {
+      display: block;
+      width: 100%;
+      max-height: min(70vh, 640px);
+      object-fit: contain;
+      border-radius: 14px;
+      border: 1px solid var(--card-border);
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+    .meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 0 0 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .section-title span {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent);
+      background: rgba(11, 108, 255, 0.1);
+      padding: 0.2rem 0.5rem;
+      border-radius: 8px;
+    }
+
+    h2.visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>GPT Image 工作台</h1>
+      <p>纯前端 · 明亮模式 · 手机与电脑自适应</p>
+    </header>
+
+    <div class="warn">
+      <strong>安全提示：</strong>API Key 仅在浏览器内存中使用，不会上传到本页面以外的服务器；但纯前端意味着密钥会出现在本机网络请求中，请勿在公共电脑使用，也不要把页面分享给他人。
+    </div>
+
+    <div class="grid">
+      <section class="card" aria-labelledby="cfg-title">
+        <h2 id="cfg-title" class="section-title">连接设置 <span>必填</span></h2>
+        <label for="apiKey">API Key</label>
+        <input type="password" id="apiKey" autocomplete="off" placeholder="Bearer 密钥" />
+
+        <div class="row-inline" style="margin-top: 0.75rem;">
+          <label><input type="checkbox" id="showKey" /> 显示密钥</label>
+        </div>
+
+        <label for="baseUrl" style="margin-top: 1rem;">Base URL</label>
+        <input type="url" id="baseUrl" value="https://apexapi.roixw.com" placeholder="https://apexapi.roixw.com" />
+
+        <label for="model" style="margin-top: 1rem;">模型</label>
+        <input type="text" id="model" value="gpt-image-2" />
+      </section>
+
+      <section class="card" aria-labelledby="gen-title">
+        <h2 id="gen-title" class="section-title">文生图 <span>POST /v1/images/generations</span></h2>
+        <label for="prompt">提示词</label>
+        <textarea id="prompt" placeholder="描述画面…"></textarea>
+
+        <div class="grid grid-2" style="margin-top: 0.75rem;">
+          <div>
+            <label for="sizeGen">尺寸</label>
+            <select id="sizeGen">
+              <option value="1024x1024">1024 × 1024（1K）</option>
+              <option value="1536x1024">1536 × 1024（2K）</option>
+              <option value="3840x2160">3840 × 2160（4K）</option>
+            </select>
+          </div>
+          <div>
+            <label for="qualityGen">quality（可选）</label>
+            <input type="text" id="qualityGen" placeholder="如 high" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="btnGen">文生图</button>
+        </div>
+
+        <div class="loading-wrap" id="loadingGen" aria-live="polite">
+          <div class="shimmer-bar"></div>
+          <div class="loading-inner">
+            <div class="loading-title">正在创作画面</div>
+            <div class="loading-sub">模型正在绘制，大分辨率可能需要更久，请勿关闭页面</div>
+            <div class="orbit" aria-hidden="true">
+              <div class="orbit-ring"></div>
+              <div class="orbit-ring r2"></div>
+              <div class="orbit-core"></div>
+              <div class="orbit-dots">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+            <div class="shimmer-bar"></div>
+          </div>
+        </div>
+
+        <div id="msgGen" class="msg" style="display: none;"></div>
+
+        <div class="result" id="resultGen" hidden>
+          <img id="imgGen" alt="生成结果" />
+          <p class="meta" id="metaGen"></p>
+        </div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top: 1rem;" aria-labelledby="edit-title">
+      <h2 id="edit-title" class="section-title">基于上图继续编辑 <span>POST /v1/images/edits</span></h2>
+      <p style="margin: 0 0 1rem; font-size: 0.88rem; color: var(--muted);">
+        编辑会使用<strong>当前预览图</strong>（上一张生成或编辑成功的图）作为原图上传；也可手动选择本地文件覆盖。
+      </p>
+
+      <label for="editPrompt">编辑指令</label>
+      <textarea id="editPrompt" placeholder="例如：把天空改成极光、增强对比度…"></textarea>
+
+      <div class="grid grid-2" style="margin-top: 0.75rem;">
+        <div>
+          <label for="sizeEdit">输出尺寸</label>
+          <select id="sizeEdit">
+            <option value="1024x1024">1024 × 1024</option>
+            <option value="1536x1024">1536 × 1024</option>
+            <option value="3840x2160">3840 × 2160</option>
+          </select>
+        </div>
+        <div>
+          <label for="maskFile">遮罩 mask（可选）</label>
+          <input type="file" id="maskFile" accept="image/*" />
+        </div>
+      </div>
+
+      <label for="overrideImage" style="margin-top: 0.75rem;">用本地文件替换原图（可选）</label>
+      <input type="file" id="overrideImage" accept="image/*" />
+
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="btnEdit">提交编辑</button>
+        <button type="button" class="btn btn-ghost" id="btnDownload">下载当前图</button>
+      </div>
+
+      <div class="loading-wrap" id="loadingEdit" aria-live="polite">
+        <div class="shimmer-bar"></div>
+        <div class="loading-inner">
+          <div class="loading-title">正在编辑图像</div>
+          <div class="loading-sub">上传并处理中，请稍候…</div>
+          <div class="orbit" aria-hidden="true">
+            <div class="orbit-ring"></div>
+            <div class="orbit-ring r2"></div>
+            <div class="orbit-core"></div>
+            <div class="orbit-dots">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+          <div class="shimmer-bar"></div>
+        </div>
+      </div>
+
+      <div id="msgEdit" class="msg" style="display: none;"></div>
+
+      <div class="result" id="resultEdit" hidden style="margin-top: 1rem;">
+        <img id="imgEdit" alt="编辑结果" />
+        <p class="meta" id="metaEdit"></p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+
+      const ALLOWED_SIZES = new Set(["1024x1024", "1536x1024", "3840x2160"]);
+
+      /** @type {{ b64: string, mime: string } | null} */
+      let currentImage = null;
+
+      function trimBaseUrl(u) {
+        return (u || "").trim().replace(/\/+$/, "");
+      }
+
+      function showMsg(el, text, type) {
+        el.style.display = "block";
+        el.textContent = text;
+        el.className = "msg " + (type === "ok" ? "ok" : type === "err" ? "err" : "");
+      }
+      function hideMsg(el) {
+        el.style.display = "none";
+        el.textContent = "";
+        el.className = "msg";
+      }
+
+      $("showKey").addEventListener("change", (e) => {
+        $("apiKey").type = e.target.checked ? "text" : "password";
+      });
+
+      function validateSize(size) {
+        if (!ALLOWED_SIZES.has(size)) throw new Error("尺寸仅支持: 1024x1024, 1536x1024, 3840x2160");
+      }
+
+      async function parseImageResponse(res) {
+        const text = await res.text();
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch {
+          throw new Error("响应不是合法 JSON: " + text.slice(0, 200));
+        }
+        if (!res.ok) {
+          const err = json.error || json;
+          const msg = typeof err === "object" && err.message ? err.message : text.slice(0, 400);
+          throw new Error("HTTP " + res.status + " · " + msg);
+        }
+        const data = json.data;
+        if (!Array.isArray(data) || !data.length) throw new Error("响应缺少 data");
+        const first = data[0];
+        let b64 = first.b64_json || "";
+        let mime = "image/png";
+        if (!b64 && first.url && String(first.url).startsWith("data:image/")) {
+          const m = /^data:image\/([^;]+);base64,(.+)$/i.exec(first.url);
+          if (m) {
+            mime = "image/" + m[1].toLowerCase();
+            b64 = m[2];
+          }
+        }
+        if (!b64) throw new Error("未返回 b64_json 或可解析的 data URL");
+        return {
+          b64,
+          mime: mime.split(";")[0].trim() || "image/png",
+          revised: first.revised_prompt || "",
+          created: json.created,
+        };
+      }
+
+      function setPreviewFromB64(b64, mime, imgEl, metaEl, resultWrap) {
+        const url = "data:" + mime + ";base64," + b64;
+        imgEl.src = url;
+        resultWrap.hidden = false;
+        currentImage = { b64, mime };
+        metaEl.textContent = "";
+      }
+
+      function b64ToBlob(b64, mime) {
+        const bin = atob(b64);
+        const arr = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        return new Blob([arr], { type: mime || "image/png" });
+      }
+
+      function extFromMime(mime) {
+        const m = (mime || "").toLowerCase();
+        if (m.includes("jpeg") || m.includes("jpg")) return "jpg";
+        if (m.includes("webp")) return "webp";
+        if (m.includes("png")) return "png";
+        return "png";
+      }
+
+      async function getEditSourceFile() {
+        const override = $("overrideImage").files[0];
+        if (override) return override;
+
+        if (!currentImage) {
+          throw new Error("请先生成一张图，或选择「用本地文件替换原图」");
+        }
+        const blob = b64ToBlob(currentImage.b64, currentImage.mime);
+        const name = "source." + extFromMime(currentImage.mime);
+        return new File([blob], name, { type: currentImage.mime });
+      }
+
+      $("btnGen").addEventListener("click", async () => {
+        const key = $("apiKey").value.trim();
+        const base = trimBaseUrl($("baseUrl").value);
+        const model = $("model").value.trim() || "gpt-image-2";
+        const prompt = $("prompt").value.trim();
+        const size = $("sizeGen").value;
+        const quality = $("qualityGen").value.trim();
+
+        hideMsg($("msgGen"));
+        $("loadingGen").classList.remove("active");
+        $("btnGen").disabled = true;
+
+        if (!key) {
+          showMsg($("msgGen"), "请填写 API Key", "err");
+          $("btnGen").disabled = false;
+          return;
+        }
+        if (!prompt) {
+          showMsg($("msgGen"), "请填写提示词", "err");
+          $("btnGen").disabled = false;
+          return;
+        }
+        try {
+          validateSize(size);
+        } catch (e) {
+          showMsg($("msgGen"), e.message, "err");
+          $("btnGen").disabled = false;
+          return;
+        }
+
+        const body = {
+          model,
+          prompt,
+          size,
+          response_format: "b64_json",
+          n: 1,
+        };
+        if (quality) body.quality = quality;
+
+        $("loadingGen").classList.add("active");
+        try {
+          const res = await fetch(base + "/v1/images/generations", {
+            method: "POST",
+            headers: {
+              Authorization: "Bearer " + key,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          });
+          const parsed = await parseImageResponse(res);
+          setPreviewFromB64(parsed.b64, parsed.mime, $("imgGen"), $("metaGen"), $("resultGen"));
+          $("imgEdit").src = $("imgGen").src;
+          $("resultEdit").hidden = false;
+          const extra = parsed.revised ? " · 修订提示: " + parsed.revised : "";
+          $("metaGen").textContent = "已就绪，可在下方「继续编辑」。" + extra;
+          showMsg($("msgGen"), "生成成功。当前预览图已用于后续编辑。", "ok");
+        } catch (e) {
+          const msg = String(e.message || e);
+          showMsg($("msgGen"), msg + (msg.includes("Failed to fetch") ? "（若控制台报 CORS，说明接口未允许浏览器跨域，需改用后端代理。）" : ""), "err");
+        } finally {
+          $("loadingGen").classList.remove("active");
+          $("btnGen").disabled = false;
+        }
+      });
+
+      $("btnEdit").addEventListener("click", async () => {
+        const key = $("apiKey").value.trim();
+        const base = trimBaseUrl($("baseUrl").value);
+        const model = $("model").value.trim() || "gpt-image-2";
+        const prompt = $("editPrompt").value.trim();
+        const size = $("sizeEdit").value;
+
+        hideMsg($("msgEdit"));
+        $("loadingEdit").classList.remove("active");
+        $("btnEdit").disabled = true;
+
+        if (!key) {
+          showMsg($("msgEdit"), "请填写 API Key", "err");
+          $("btnEdit").disabled = false;
+          return;
+        }
+        if (!prompt) {
+          showMsg($("msgEdit"), "请填写编辑指令", "err");
+          $("btnEdit").disabled = false;
+          return;
+        }
+        try {
+          validateSize(size);
+        } catch (e) {
+          showMsg($("msgEdit"), e.message, "err");
+          $("btnEdit").disabled = false;
+          return;
+        }
+
+        let file;
+        try {
+          file = await getEditSourceFile();
+        } catch (e) {
+          showMsg($("msgEdit"), e.message, "err");
+          $("btnEdit").disabled = false;
+          return;
+        }
+
+        const fd = new FormData();
+        fd.append("model", model);
+        fd.append("prompt", prompt);
+        fd.append("size", size);
+        fd.append("response_format", "b64_json");
+        fd.append("image", file, file.name);
+        const mask = $("maskFile").files[0];
+        if (mask) fd.append("mask", mask, mask.name);
+
+        $("loadingEdit").classList.add("active");
+        try {
+          const res = await fetch(base + "/v1/images/edits", {
+            method: "POST",
+            headers: {
+              Authorization: "Bearer " + key,
+            },
+            body: fd,
+          });
+          const parsed = await parseImageResponse(res);
+          setPreviewFromB64(parsed.b64, parsed.mime, $("imgEdit"), $("metaEdit"), $("resultEdit"));
+          $("imgGen").src = $("imgEdit").src;
+          $("resultGen").hidden = false;
+          const extra = parsed.revised ? "修订提示: " + parsed.revised : "";
+          $("metaEdit").textContent = (extra || "编辑完成。") + " 可再次修改指令继续迭代。";
+          showMsg($("msgEdit"), "编辑成功。预览已更新，可继续编辑。", "ok");
+        } catch (e) {
+          const msg = String(e.message || e);
+          showMsg($("msgEdit"), msg + (msg.includes("Failed to fetch") ? "（可能是 CORS 限制。）" : ""), "err");
+        } finally {
+          $("loadingEdit").classList.remove("active");
+          $("btnEdit").disabled = false;
+        }
+      });
+
+      $("btnDownload").addEventListener("click", () => {
+        if (!currentImage) {
+          alert("请先生成或编辑出一张图");
+          return;
+        }
+        const a = document.createElement("a");
+        a.href = "data:" + currentImage.mime + ";base64," + currentImage.b64;
+        a.download = "gpt-image-" + Date.now() + "." + extFromMime(currentImage.mime);
+        a.click();
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,2837 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>绘境 · 图像创作台</title>
+  <script>
+    // 优先恢复用户主题；没有保存偏好时默认使用明亮主题。
+    (function () {
+      try {
+        if ((localStorage.getItem("gpt-image-theme") || "light") === "light") {
+          document.documentElement.dataset.theme = "light";
+        }
+      } catch (_) {}
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050916;
+      --bg-2: #0a1021;
+      --panel: rgba(13, 20, 38, 0.78);
+      --panel-2: rgba(18, 27, 49, 0.7);
+      --panel-3: rgba(9, 15, 31, 0.86);
+      --line: rgba(134, 162, 214, 0.18);
+      --line-strong: rgba(58, 231, 244, 0.58);
+      --text: #eef5ff;
+      --muted: #95a6bd;
+      --muted-2: #64748b;
+      --cyan: #3de9f2;
+      --pink: #d64ee8;
+      --violet: #9b79ff;
+      --danger: #ff6b88;
+      --success: #51e6a8;
+      --radius: 8px;
+      --shadow: 0 22px 70px rgba(0, 0, 0, 0.36);
+      --font: Inter, "Segoe UI", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --bg: #eef4fb;
+      --bg-2: #f7fbff;
+      --panel: rgba(255, 255, 255, 0.82);
+      --panel-2: rgba(255, 255, 255, 0.72);
+      --panel-3: rgba(247, 251, 255, 0.92);
+      --line: rgba(56, 94, 148, 0.16);
+      --line-strong: rgba(13, 137, 170, 0.48);
+      --text: #142033;
+      --muted: #5e7088;
+      --muted-2: #8190a3;
+      --cyan: #0d93b4;
+      --selected: #087f9a;
+      --selected-bg: rgba(13, 147, 180, 0.14);
+      --selected-ring: rgba(13, 147, 180, 0.34);
+      --pink: #b74cc7;
+      --violet: #6563cf;
+      --shadow: 0 18px 46px rgba(52, 77, 108, 0.14);
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(circle at 30% 0%, rgba(74, 83, 174, 0.2), transparent 34%),
+        radial-gradient(circle at 78% 8%, rgba(50, 221, 242, 0.12), transparent 28%),
+        linear-gradient(180deg, #070b19 0%, var(--bg) 46%, #050815 100%);
+      overflow-x: hidden;
+    }
+
+    :root[data-theme="light"] body {
+      background:
+        radial-gradient(circle at 28% 0%, rgba(82, 138, 220, 0.17), transparent 34%),
+        radial-gradient(circle at 78% 8%, rgba(13, 147, 180, 0.12), transparent 28%),
+        linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(rgba(80, 130, 190, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(80, 130, 190, 0.035) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(180deg, transparent, #000 18%, #000 72%, transparent);
+      z-index: 0;
+    }
+
+    button, textarea, select, input { font: inherit; }
+    button { border: 0; }
+    svg { display: block; }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 0 42px;
+      border-bottom: 1px solid rgba(141, 170, 214, 0.14);
+      background: rgba(5, 9, 22, 0.66);
+      backdrop-filter: blur(18px);
+    }
+
+    :root[data-theme="light"] .topbar { background: rgba(255, 255, 255, 0.74); }
+
+    .brand-mark {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1 1 auto;
+      font-weight: 850;
+      letter-spacing: 0.07em;
+      white-space: nowrap;
+    }
+
+    .brand-icon {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      color: #05111d;
+      background: linear-gradient(135deg, var(--cyan), #72f2e1 45%, var(--pink));
+      box-shadow: 0 0 24px rgba(61, 233, 242, 0.25);
+    }
+
+    .brand-mark strong {
+      color: #75ffe6;
+      margin-right: 4px;
+    }
+
+    :root[data-theme="light"] .brand-mark strong { color: var(--cyan); }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      flex: 0 0 auto;
+      gap: 18px;
+    }
+
+    .theme-switch {
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 8px 0 14px;
+      border: 1px solid rgba(141, 170, 214, 0.12);
+      border-radius: 999px;
+      color: var(--cyan);
+      background: rgba(16, 26, 48, 0.8);
+      cursor: pointer;
+    }
+
+    :root[data-theme="light"] .theme-switch { background: rgba(255, 255, 255, 0.82); }
+
+    :root[data-theme="light"] .avatar-btn,
+    :root[data-theme="light"] .icon-btn {
+      background: rgba(255, 255, 255, 0.78);
+      border-color: rgba(56, 94, 148, 0.14);
+    }
+
+    .switch-track {
+      width: 36px;
+      height: 20px;
+      padding: 2px;
+      border-radius: 999px;
+      background: rgba(61, 233, 242, 0.2);
+    }
+
+    .switch-dot {
+      width: 16px;
+      height: 16px;
+      display: block;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 16px rgba(61, 233, 242, 0.8);
+      transform: translateX(16px);
+      transition: transform 0.2s ease;
+    }
+
+    :root[data-theme="light"] .switch-dot { transform: translateX(0); }
+
+    .avatar-btn,
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(141, 170, 214, 0.12);
+      border-radius: 50%;
+      color: var(--muted);
+      background: rgba(16, 26, 48, 0.72);
+      cursor: pointer;
+      transition: border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    }
+
+    .icon-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: transparent;
+    }
+
+    .avatar-btn:hover,
+    .icon-btn:hover {
+      color: var(--cyan);
+      border-color: var(--line-strong);
+      transform: translateY(-1px);
+    }
+
+    .layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 344px minmax(480px, 1fr) 438px;
+      gap: 42px;
+      padding: 18px 40px 28px;
+      min-height: 0;
+    }
+
+    .panel-shell {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(17, 26, 48, 0.76), rgba(7, 12, 27, 0.68));
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(18px);
+    }
+
+    :root[data-theme="light"] .panel-shell {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(244, 249, 255, 0.76));
+    }
+
+    .history {
+      position: sticky;
+      top: 90px;
+      height: calc(100vh - 118px);
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      font-size: 16px;
+      font-weight: 850;
+    }
+
+    .title-left {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .records-scroll {
+      flex: 1;
+      overflow: auto;
+      padding: 0 2px 4px 0;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(61, 233, 242, 0.5) transparent;
+    }
+
+    .empty-note {
+      margin: 0;
+      padding: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+      border: 1px dashed rgba(141, 170, 214, 0.2);
+      border-radius: var(--radius);
+      background: rgba(8, 15, 31, 0.38);
+    }
+
+    :root[data-theme="light"] .empty-note {
+      background: rgba(255, 255, 255, 0.62);
+      border-color: rgba(56, 94, 148, 0.18);
+    }
+
+    .rec-item {
+      position: relative;
+      display: grid;
+      grid-template-columns: 58px minmax(0, 1fr);
+      gap: 12px;
+      min-height: 88px;
+      padding: 12px;
+      margin-bottom: 8px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: rgba(13, 22, 42, 0.64);
+      cursor: pointer;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    :root[data-theme="light"] .rec-item {
+      background: rgba(255, 255, 255, 0.72);
+      border-color: rgba(56, 94, 148, 0.1);
+    }
+
+    .rec-item:hover,
+    .rec-item.active {
+      border-color: var(--line-strong);
+      background: linear-gradient(90deg, rgba(31, 207, 225, 0.16), rgba(14, 24, 48, 0.78));
+      box-shadow: 0 0 26px rgba(61, 233, 242, 0.12);
+      transform: translateY(-1px);
+    }
+
+    :root[data-theme="light"] .rec-item:hover,
+    :root[data-theme="light"] .rec-item.active {
+      background: linear-gradient(90deg, rgba(13, 147, 180, 0.13), rgba(255, 255, 255, 0.9));
+      box-shadow: 0 10px 24px rgba(52, 77, 108, 0.12);
+    }
+
+    .rec-item.active::before {
+      content: "";
+      position: absolute;
+      left: -16px;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      border-radius: 999px;
+      background: var(--cyan);
+      box-shadow: 0 0 18px rgba(61, 233, 242, 0.8);
+    }
+
+    .rec-thumb {
+      width: 58px;
+      height: 58px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .rec-meta { min-width: 0; }
+    .rec-kind {
+      display: inline-flex;
+      align-items: center;
+      min-height: 18px;
+      padding: 0 7px;
+      margin-bottom: 5px;
+      border-radius: 5px;
+      color: var(--cyan);
+      background: rgba(61, 233, 242, 0.14);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .rec-kind.ed {
+      color: #ff86f0;
+      background: rgba(214, 78, 232, 0.14);
+    }
+
+    .rec-kind.pending {
+      color: var(--cyan);
+      background: rgba(61, 233, 242, 0.12);
+    }
+
+    .rec-kind.failed {
+      color: var(--danger);
+      background: rgba(255, 107, 136, 0.12);
+    }
+
+    .rec-thumb.pending {
+      display: grid;
+      place-items: center;
+      background:
+        linear-gradient(rgba(61, 233, 242, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(61, 233, 242, 0.08) 1px, transparent 1px),
+        rgba(10, 20, 38, 0.72);
+      background-size: 10px 10px;
+    }
+
+    .rec-thumb.pending::before,
+    .inline-spinner {
+      content: "";
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid rgba(61, 233, 242, 0.2);
+      border-top-color: var(--cyan);
+      animation: spin 0.8s linear infinite;
+    }
+
+    .rec-thumb.failed {
+      display: grid;
+      place-items: center;
+      color: var(--danger);
+      background: rgba(255, 107, 136, 0.08);
+      border: 1px solid rgba(255, 107, 136, 0.18);
+      font-weight: 900;
+    }
+
+    .rec-prompt {
+      color: #d4deee;
+      font-size: 13px;
+      line-height: 1.42;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    :root[data-theme="light"] .rec-prompt { color: #26364c; }
+
+    .rec-time {
+      margin-top: 5px;
+      color: var(--muted-2);
+      font-size: 12px;
+    }
+
+    .history-foot {
+      padding-top: 12px;
+    }
+
+    .main {
+      min-width: 0;
+      padding-top: 18px;
+    }
+
+    .hero-copy {
+      margin-bottom: 24px;
+    }
+
+    .hero-copy h1 {
+      margin: 0 0 10px;
+      font-size: 36px;
+      line-height: 1.08;
+      letter-spacing: 0;
+      font-weight: 900;
+    }
+
+    .spark {
+      margin-left: 8px;
+      color: #b995ff;
+      text-shadow: 0 0 22px rgba(185, 149, 255, 0.54);
+    }
+
+    .hero-copy p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 880px;
+      min-height: 1.7em;
+    }
+
+    .typing-caret {
+      display: inline-block;
+      width: 1px;
+      height: 1.1em;
+      margin-left: 3px;
+      vertical-align: -0.18em;
+      background: var(--cyan);
+      animation: caretBlink 0.9s steps(1) infinite;
+    }
+
+    @keyframes caretBlink {
+      0%, 46% { opacity: 1; }
+      47%, 100% { opacity: 0; }
+    }
+
+    .prompt-card {
+      padding: 18px;
+      margin-bottom: 22px;
+    }
+
+    .mode-tabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+      padding: 6px;
+      border: 1px solid rgba(141, 170, 214, 0.16);
+      border-radius: 8px;
+      background: rgba(11, 18, 34, 0.62);
+    }
+
+    :root[data-theme="light"] .mode-tabs {
+      background: rgba(255, 255, 255, 0.68);
+      border-color: rgba(56, 94, 148, 0.14);
+    }
+
+    .mode-tab {
+      min-height: 44px;
+      border-radius: 7px;
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-weight: 850;
+      transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+    }
+
+    .mode-tab.active {
+      color: var(--cyan);
+      border-color: var(--line-strong);
+      background: rgba(61, 233, 242, 0.08);
+    }
+
+    :root[data-theme="light"] .mode-tab.active {
+      color: var(--selected);
+      border-color: var(--selected);
+      background: var(--selected-bg);
+      box-shadow: inset 0 0 0 1px var(--selected-ring), 0 8px 18px rgba(13, 147, 180, 0.12);
+    }
+
+    body[data-work-mode="edit"] .generate-panel,
+    body[data-work-mode="generate"] .edit-box {
+      display: none;
+    }
+
+    body[data-work-mode="edit"]:not(.has-edit-image):not(.has-task-preview) .preview-card {
+      display: none;
+    }
+
+    body[data-work-mode="generate"]:not(.has-task-preview) .preview-card {
+      display: none;
+    }
+
+    .prompt-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .prompt-wrap,
+    .edit-prompt-wrap {
+      position: relative;
+      border: 2px solid rgba(61, 233, 242, 0.62);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: rgba(8, 14, 29, 0.42);
+      animation: inputCalloutPulse 1.85s ease-in-out infinite;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    :root[data-theme="light"] .prompt-wrap,
+    :root[data-theme="light"] .edit-prompt-wrap {
+      border-color: var(--selected);
+      background: #fff;
+      animation-name: inputCalloutPulseLight;
+    }
+
+    .prompt-wrap:focus-within,
+    .edit-prompt-wrap:focus-within {
+      border-color: var(--line-strong);
+      box-shadow: 0 0 0 5px rgba(61, 233, 242, 0.2), 0 0 34px rgba(61, 233, 242, 0.26);
+      background: rgba(8, 14, 29, 0.58);
+    }
+
+    :root[data-theme="light"] .prompt-wrap:focus-within,
+    :root[data-theme="light"] .edit-prompt-wrap:focus-within {
+      border-color: var(--selected);
+      box-shadow: 0 0 0 5px rgba(8, 127, 154, 0.22), 0 0 34px rgba(8, 127, 154, 0.22);
+      background: #fff;
+    }
+
+    .prompt-wrap textarea,
+    .edit-prompt-wrap textarea {
+      width: 100%;
+      min-height: 82px;
+      resize: vertical;
+      border: 0;
+      outline: 0;
+      color: var(--text);
+      background: transparent;
+      line-height: 1.7;
+    }
+
+    .prompt-wrap textarea::placeholder,
+    .edit-prompt-wrap textarea::placeholder { color: #627089; }
+
+    .prompt-wrap.attention {
+      animation: promptPulse 1.15s ease-in-out 3;
+      border-color: rgba(61, 233, 242, 0.9);
+      background: rgba(61, 233, 242, 0.06);
+      box-shadow: 0 0 0 6px rgba(61, 233, 242, 0.28), 0 0 36px rgba(61, 233, 242, 0.32);
+    }
+
+    :root[data-theme="light"] .prompt-wrap.attention {
+      border-color: var(--selected);
+      background: var(--selected-bg);
+      box-shadow: 0 0 0 6px rgba(8, 127, 154, 0.24), 0 0 36px rgba(8, 127, 154, 0.3);
+    }
+
+    @keyframes promptPulse {
+      0%, 100% {
+        box-shadow: 0 0 0 4px rgba(61, 233, 242, 0.2), 0 0 0 rgba(61, 233, 242, 0);
+      }
+      50% {
+        box-shadow: 0 0 0 8px rgba(61, 233, 242, 0.42), 0 0 42px rgba(61, 233, 242, 0.38);
+      }
+    }
+
+    @keyframes inputCalloutPulse {
+      0%, 100% {
+        box-shadow: 0 0 0 3px rgba(61, 233, 242, 0.12), 0 0 10px rgba(61, 233, 242, 0.12);
+      }
+      50% {
+        box-shadow: 0 0 0 8px rgba(61, 233, 242, 0.28), 0 0 36px rgba(61, 233, 242, 0.28);
+      }
+    }
+
+    @keyframes inputCalloutPulseLight {
+      0%, 100% {
+        box-shadow: 0 0 0 3px rgba(8, 127, 154, 0.14), 0 0 12px rgba(8, 127, 154, 0.1);
+      }
+      50% {
+        box-shadow: 0 0 0 8px rgba(8, 127, 154, 0.3), 0 0 38px rgba(8, 127, 154, 0.22);
+      }
+    }
+
+    .prompt-tools {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 12px;
+    }
+
+    .tool-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .soft-btn,
+    .ghost-btn,
+    .primary-btn {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border-radius: 7px;
+      padding: 0 14px;
+      color: var(--text);
+      background: rgba(21, 31, 55, 0.78);
+      border: 1px solid rgba(141, 170, 214, 0.18);
+      cursor: pointer;
+      transition: transform 0.18s ease, border-color 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    :root[data-theme="light"] .soft-btn,
+    :root[data-theme="light"] .ghost-btn {
+      color: #2f4968;
+      background: rgba(255, 255, 255, 0.72);
+      border-color: rgba(56, 94, 148, 0.16);
+    }
+
+    .soft-btn {
+      color: #cfd8e8;
+      font-size: 13px;
+    }
+
+    .soft-btn:hover,
+    .ghost-btn:hover {
+      border-color: var(--line-strong);
+      transform: translateY(-1px);
+    }
+
+    .ghost-btn {
+      width: 100%;
+      color: var(--cyan);
+      background: rgba(20, 32, 58, 0.56);
+    }
+
+    .primary-btn {
+      width: 100%;
+      min-height: 52px;
+      border-color: transparent;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 900;
+      background: linear-gradient(100deg, #47e6ef 0%, #84deff 38%, #af7dff 66%, #da3bcd 100%);
+      box-shadow: 0 18px 36px rgba(95, 119, 255, 0.22);
+    }
+
+    .action-pulse {
+      animation: actionPulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes actionPulse {
+      0%, 100% {
+        transform: translateY(0) scale(1);
+      }
+      50% {
+        transform: translateY(-2px) scale(1.015);
+      }
+    }
+
+    .primary-btn:hover { transform: translateY(-1px); }
+    .primary-btn:disabled,
+    .soft-btn:disabled,
+    .ghost-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+      animation: none;
+    }
+
+    .edit-submit-btn {
+      margin-top: 14px;
+    }
+
+    .count {
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .preview-card {
+      position: relative;
+      min-height: 414px;
+      padding: 18px;
+      border-color: rgba(61, 233, 242, 0.34);
+      overflow: hidden;
+    }
+
+    .preview-card::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      pointer-events: none;
+      border-radius: var(--radius);
+      background: linear-gradient(120deg, rgba(61, 233, 242, 0.48), transparent 36%, transparent 76%, rgba(214, 78, 232, 0.6));
+      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      mask-composite: exclude;
+      padding: 1px;
+    }
+
+    .preview-title {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-weight: 850;
+    }
+
+    .preview-stage {
+      position: relative;
+      min-height: 340px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 8px;
+      background:
+        linear-gradient(rgba(74, 112, 168, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(74, 112, 168, 0.08) 1px, transparent 1px),
+        rgba(8, 14, 29, 0.45);
+      background-size: 18px 18px;
+    }
+
+    :root[data-theme="light"] .preview-stage {
+      background:
+        linear-gradient(rgba(56, 94, 148, 0.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 94, 148, 0.055) 1px, transparent 1px),
+        rgba(255, 255, 255, 0.52);
+      background-size: 18px 18px;
+    }
+
+    .preview-stage img {
+      max-width: 100%;
+      max-height: 560px;
+      object-fit: contain;
+      border-radius: 8px;
+      cursor: zoom-in;
+      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.42);
+    }
+
+    .preview-stage img[hidden] { display: none; }
+
+    .hero-empty {
+      width: min(420px, 88%);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .hero-empty.generating .empty-icon {
+      color: var(--cyan);
+    }
+
+    .generation-progress {
+      width: min(360px, 100%);
+      margin-top: 18px;
+    }
+
+    .progress-track {
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(141, 170, 214, 0.16);
+      box-shadow: inset 0 0 0 1px rgba(141, 170, 214, 0.08);
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--cyan), #84deff 52%, var(--pink));
+      box-shadow: 0 0 18px rgba(61, 233, 242, 0.45);
+      transition: width 0.45s ease;
+    }
+
+    .progress-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .progress-note {
+      margin-top: 10px;
+      color: var(--muted-2);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .empty-icon {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 12px;
+      color: rgba(149, 166, 189, 0.35);
+    }
+
+    .empty-title {
+      color: #cdd7e8;
+      font-size: 18px;
+      font-weight: 850;
+    }
+
+    :root[data-theme="light"] .empty-title { color: #26364c; }
+
+    .hero-hint {
+      margin-top: 12px;
+      color: var(--muted-2);
+      font-size: 13px;
+    }
+
+    .settings {
+      position: sticky;
+      top: 90px;
+      height: fit-content;
+      margin-top: 72px;
+      padding: 20px;
+    }
+
+    .field-block {
+      margin-top: 20px;
+    }
+
+    .field-label {
+      display: block;
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 750;
+    }
+
+    .style-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .style-card {
+      position: relative;
+      min-height: 76px;
+      overflow: hidden;
+      border-radius: 7px;
+      border: 1px solid rgba(141, 170, 214, 0.16);
+      background: rgba(17, 26, 48, 0.7);
+      cursor: pointer;
+    }
+
+    :root[data-theme="light"] .style-card {
+      background: rgba(255, 255, 255, 0.74);
+      border-color: rgba(56, 94, 148, 0.14);
+    }
+
+    .style-card input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .style-card img {
+      width: 100%;
+      height: 76px;
+      display: block;
+      object-fit: cover;
+      filter: saturate(0.9) contrast(0.96);
+      transition: transform 0.24s ease, filter 0.24s ease;
+    }
+
+    .style-card span {
+      position: absolute;
+      inset: auto 0 0;
+      min-height: 30px;
+      display: grid;
+      place-items: center;
+      padding: 0 6px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 900;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75);
+      background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.58));
+    }
+
+    .style-card:hover img,
+    .style-card:has(input:checked) img {
+      filter: saturate(1.08) contrast(1.05);
+      transform: scale(1.03);
+    }
+
+    .style-card:has(input:checked) {
+      border-color: var(--line-strong);
+      box-shadow: 0 0 0 1px rgba(61, 233, 242, 0.18), 0 0 22px rgba(61, 233, 242, 0.2);
+    }
+
+    .style-card:has(input:checked)::after {
+      content: "已选";
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      z-index: 2;
+      min-height: 22px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 8px;
+      border-radius: 999px;
+      color: #04131a;
+      background: var(--cyan);
+      font-size: 12px;
+      font-weight: 900;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+    }
+
+    :root[data-theme="light"] .style-card:has(input:checked) {
+      border-color: var(--selected);
+      background: #fff;
+      box-shadow: 0 0 0 2px var(--selected-ring), 0 12px 26px rgba(13, 147, 180, 0.18);
+    }
+
+    :root[data-theme="light"] .style-card:has(input:checked)::after {
+      color: #fff;
+      background: var(--selected);
+      box-shadow: 0 8px 18px rgba(13, 147, 180, 0.28);
+    }
+
+    :root[data-theme="light"] .style-card:has(input:checked) span {
+      background: linear-gradient(180deg, transparent, rgba(5, 24, 35, 0.74));
+    }
+
+    .seg-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--cols, 3), 1fr);
+      gap: 8px;
+    }
+
+    .seg-option {
+      position: relative;
+      min-width: 0;
+    }
+
+    .seg-option input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .seg-option span {
+      min-height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(141, 170, 214, 0.16);
+      border-radius: 5px;
+      color: #b7c2d4;
+      background: rgba(24, 34, 58, 0.76);
+      cursor: pointer;
+      transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+    }
+
+    :root[data-theme="light"] .seg-option span {
+      color: #53657d;
+      background: rgba(255, 255, 255, 0.74);
+      border-color: rgba(56, 94, 148, 0.14);
+    }
+
+    .seg-option input:checked + span {
+      color: var(--cyan);
+      border-color: var(--line-strong);
+      background: rgba(61, 233, 242, 0.08);
+    }
+
+    :root[data-theme="light"] .seg-option input:checked + span {
+      color: var(--selected);
+      border-color: var(--selected);
+      background: var(--selected-bg);
+      box-shadow: inset 0 0 0 1px var(--selected-ring), 0 8px 18px rgba(13, 147, 180, 0.12);
+    }
+
+    .edit-box {
+      margin-top: 20px;
+      padding: 18px;
+    }
+
+    .edit-box summary {
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .edit-box textarea {
+      width: 100%;
+      min-height: 92px;
+      resize: vertical;
+      border: 0;
+      border-radius: 0;
+      outline: none;
+      padding: 0;
+      color: var(--text);
+      background: transparent;
+      line-height: 1.55;
+    }
+
+    .edit-prompt-wrap {
+      margin-top: 12px;
+    }
+
+    :root[data-theme="light"] .busy {
+      background: rgba(237, 244, 251, 0.72);
+    }
+
+    :root[data-theme="light"] .busy-card,
+    :root[data-theme="light"] .lightbox-close {
+      background: rgba(255, 255, 255, 0.96);
+    }
+
+    .file-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .file-trigger {
+      min-height: 52px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border: 2px dashed rgba(61, 233, 242, 0.45);
+      border-radius: 8px;
+      color: #06131b;
+      background: linear-gradient(100deg, #47e6ef 0%, #84deff 46%, #af7dff 100%);
+      box-shadow: 0 16px 30px rgba(95, 119, 255, 0.2);
+      cursor: pointer;
+      font-weight: 900;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .file-trigger:hover {
+      border-color: var(--line-strong);
+      transform: translateY(-1px);
+      box-shadow: 0 18px 34px rgba(95, 119, 255, 0.28);
+    }
+
+    :root[data-theme="light"] .file-trigger {
+      color: #fff;
+      border-color: rgba(8, 127, 154, 0.42);
+      background: linear-gradient(100deg, #087f9a 0%, #15a8c8 52%, #6563cf 100%);
+    }
+
+    .file-chip {
+      color: var(--muted-2);
+      font-size: 13px;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .source-card {
+      margin-top: 14px;
+      padding: 12px;
+      border: 1px solid rgba(141, 170, 214, 0.16);
+      border-radius: 8px;
+      background: rgba(10, 18, 34, 0.38);
+    }
+
+    :root[data-theme="light"] .source-card {
+      background: rgba(255, 255, 255, 0.72);
+      border-color: rgba(56, 94, 148, 0.14);
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+
+    .msg {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 7px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .msg.ok {
+      display: block;
+      color: var(--success);
+      background: rgba(81, 230, 168, 0.09);
+      border: 1px solid rgba(81, 230, 168, 0.22);
+    }
+
+    .msg.err {
+      display: block;
+      color: var(--danger);
+      background: rgba(255, 107, 136, 0.08);
+      border: 1px solid rgba(255, 107, 136, 0.22);
+    }
+
+    .cost {
+      margin-top: 12px;
+      text-align: center;
+      color: var(--muted-2);
+      font-size: 13px;
+    }
+
+    .busy {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      place-items: center;
+      background: rgba(2, 5, 14, 0.66);
+      backdrop-filter: blur(10px);
+    }
+
+    .busy.active { display: grid; }
+
+    .busy-card {
+      min-width: min(360px, 86vw);
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      text-align: center;
+      background: rgba(12, 19, 38, 0.92);
+      box-shadow: var(--shadow);
+    }
+
+    .spinner {
+      width: 34px;
+      height: 34px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      border: 3px solid rgba(61, 233, 242, 0.18);
+      border-top-color: var(--cyan);
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      place-items: center;
+      padding: 28px;
+      background: rgba(1, 4, 12, 0.82);
+      backdrop-filter: blur(12px);
+    }
+
+    .lightbox.open { display: grid; }
+
+    .lightbox-inner {
+      position: relative;
+      max-width: min(96vw, 1280px);
+      max-height: 92vh;
+    }
+
+    .lightbox img {
+      max-width: 100%;
+      max-height: 92vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: -14px;
+      right: -14px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      color: var(--text);
+      background: rgba(17, 26, 48, 0.95);
+      border: 1px solid var(--line);
+      cursor: pointer;
+    }
+
+    .mobile-history-btn { display: none; }
+    .mobile-bottom-nav,
+    .mobile-generate-panel,
+    .profile-panel {
+      display: none;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 82px;
+      z-index: 40;
+      max-width: min(320px, calc(100vw - 32px));
+      padding: 10px 14px;
+      border: 1px solid rgba(61, 233, 242, 0.28);
+      border-radius: 999px;
+      color: var(--cyan);
+      background: rgba(8, 16, 32, 0.92);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.32);
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 10px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    .top-alert {
+      position: sticky;
+      top: 0;
+      z-index: 25;
+      display: none;
+      margin: 0;
+      padding: 13px 42px;
+      border-bottom: 1px solid rgba(255, 107, 136, 0.28);
+      color: #fff;
+      background: linear-gradient(100deg, rgba(210, 51, 86, 0.96), rgba(180, 76, 199, 0.94));
+      box-shadow: 0 14px 34px rgba(160, 46, 84, 0.24);
+      font-weight: 850;
+      line-height: 1.45;
+    }
+
+    .top-alert.show {
+      display: block;
+    }
+
+    :root[data-theme="light"] .top-alert {
+      color: #fff;
+      background: linear-gradient(100deg, #c91f4a, #8d3fc4);
+      box-shadow: 0 14px 34px rgba(150, 42, 84, 0.2);
+    }
+
+    .top-actions .mobile-history-btn {
+      width: auto;
+      min-width: 86px;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    .key-dialog {
+      position: fixed;
+      inset: 0;
+      z-index: 35;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(2, 5, 14, 0.52);
+      backdrop-filter: blur(8px);
+    }
+
+    .key-dialog.open { display: grid; }
+
+    .key-card {
+      width: min(440px, 94vw);
+      padding: 20px;
+    }
+
+    .key-card input,
+    .profile-card input {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid rgba(141, 170, 214, 0.2);
+      border-radius: 7px;
+      outline: none;
+      padding: 0 12px;
+      color: var(--text);
+      background: rgba(8, 14, 29, 0.68);
+    }
+
+    :root[data-theme="light"] .key-card input,
+    :root[data-theme="light"] .profile-card input {
+      background: rgba(255, 255, 255, 0.86);
+    }
+
+    .profile-card {
+      padding: 18px;
+    }
+
+    .profile-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .profile-avatar {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: var(--cyan);
+      background: rgba(61, 233, 242, 0.1);
+      border: 1px solid rgba(61, 233, 242, 0.22);
+    }
+
+    .profile-meta strong {
+      display: block;
+      font-size: 16px;
+    }
+
+    .profile-meta span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 1280px) {
+      .layout {
+        grid-template-columns: 300px minmax(420px, 1fr) 360px;
+        gap: 24px;
+        padding-inline: 24px;
+      }
+      .style-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 1040px) {
+      .layout {
+        grid-template-columns: 1fr;
+        gap: 18px;
+        padding-bottom: 92px;
+      }
+      .main,
+      .history,
+      .settings,
+      .profile-panel {
+        display: none;
+      }
+      body[data-mobile-tab="paint"] .main,
+      body[data-mobile-tab="records"] .history,
+      body[data-mobile-tab="settings"] .settings,
+      body[data-mobile-tab="profile"] .profile-panel {
+        display: block;
+      }
+      .history {
+        position: static;
+        width: auto;
+        height: auto;
+        max-height: none;
+        transform: none;
+        border-radius: var(--radius);
+      }
+      .settings {
+        position: static;
+        margin-top: 0;
+      }
+      .mobile-history-btn,
+      .top-actions .avatar-btn {
+        display: none;
+      }
+      .mobile-generate-panel {
+        display: block;
+        margin-bottom: 18px;
+        padding: 14px;
+      }
+      .mobile-bottom-nav {
+        position: fixed;
+        left: 50%;
+        bottom: 0;
+        z-index: 18;
+        width: min(100%, 430px);
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+        padding: 10px 14px max(10px, env(safe-area-inset-bottom));
+        border: 1px solid rgba(141, 170, 214, 0.16);
+        border-bottom: 0;
+        border-radius: 20px 20px 0 0;
+        background: rgba(6, 11, 25, 0.92);
+        backdrop-filter: blur(18px);
+        transform: translateX(-50%);
+      }
+      :root[data-theme="light"] .mobile-bottom-nav {
+        background: rgba(255, 255, 255, 0.94);
+      }
+      .mobile-nav-btn {
+        min-height: 46px;
+        display: grid;
+        place-items: center;
+        gap: 3px;
+        border-radius: 10px;
+        color: var(--muted);
+        background: transparent;
+        cursor: pointer;
+      }
+      .mobile-nav-btn svg {
+        width: 20px;
+        height: 20px;
+      }
+      .mobile-nav-btn.active {
+        color: var(--cyan);
+        background: rgba(61, 233, 242, 0.08);
+      }
+      :root[data-theme="light"] .mobile-nav-btn.active {
+        color: var(--selected);
+        background: var(--selected-bg);
+        box-shadow: inset 0 0 0 1px var(--selected-ring);
+      }
+      .mobile-nav-btn span {
+        font-size: 11px;
+      }
+      body[data-work-mode="edit"] .edit-submit-btn {
+        position: sticky;
+        bottom: 78px;
+        z-index: 12;
+        box-shadow: 0 18px 36px rgba(95, 119, 255, 0.3);
+      }
+      .main { padding-top: 4px; }
+      .topbar { padding-inline: 20px; }
+    }
+
+    @media (max-width: 640px) {
+      body::before { background-size: 24px 24px; }
+      .topbar {
+        height: 64px;
+        padding-inline: 14px;
+      }
+      .brand-mark { font-size: 13px; }
+      .brand-mark span:last-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .top-actions { gap: 8px; }
+      .top-actions .mobile-history-btn {
+        min-width: 78px;
+        min-height: 32px;
+        padding: 0 10px;
+        font-size: 12px;
+      }
+      .theme-switch .switch-label { display: none; }
+      .history {
+        padding: 14px;
+      }
+      .layout { padding: 14px; gap: 14px; }
+      .main { padding-top: 0; }
+      .hero-copy { margin-bottom: 14px; }
+      .hero-copy h1 { font-size: 31px; }
+      .hero-copy p { font-size: 13px; line-height: 1.55; }
+      .prompt-card,
+      .preview-card,
+      .settings { padding: 14px; }
+      .panel-title { font-size: 15px; margin-bottom: 12px; }
+      .field-label { font-size: 13px; }
+      .soft-btn,
+      .ghost-btn {
+        min-height: 32px;
+        padding: 0 10px;
+        font-size: 12px;
+      }
+      .primary-btn {
+        min-height: 46px;
+        font-size: 14px;
+      }
+      .seg-option span {
+        min-height: 32px;
+        padding: 0 8px;
+        font-size: 12px;
+      }
+      #mobileSettingSummary {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .prompt-head,
+      .preview-title {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .prompt-tools {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .tool-group { width: 100%; }
+      .tool-group .soft-btn { flex: 1; min-width: 0; }
+      .style-grid { grid-template-columns: repeat(2, 1fr); }
+      .seg-grid { grid-template-columns: repeat(2, 1fr); }
+      .preview-card { min-height: 360px; }
+      .preview-stage { min-height: 282px; }
+      .style-card,
+      .style-card img { min-height: 70px; height: 70px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="top-alert" id="topAlert" role="alert" aria-live="assertive"></div>
+    <header class="topbar">
+      <div class="brand-mark" aria-label="图像创作台">
+        <span class="brand-icon" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+            <rect x="4" y="5" width="16" height="14" rx="3"></rect>
+            <path d="M8 13h3l2-3 3 5"></path>
+            <circle cx="8.5" cy="9" r="1"></circle>
+          </svg>
+        </span>
+        <span><strong>绘境</strong> 图像创作台</span>
+      </div>
+      <div class="top-actions">
+        <button type="button" class="soft-btn mobile-history-btn" id="btnOpenRec">生成记录</button>
+        <button type="button" class="theme-switch" id="btnTheme" role="switch" aria-checked="false">
+          <span class="switch-label">暗色</span>
+          <span class="switch-track" aria-hidden="true"><span class="switch-dot"></span></span>
+        </button>
+        <button type="button" class="avatar-btn" id="btnKey" aria-label="配置密钥">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M4 21a8 8 0 0 1 16 0"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="history panel-shell" id="aside">
+        <div class="panel-title">
+          <span class="title-left">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 1 0 3-6.7"></path>
+              <path d="M3 4v6h6"></path>
+              <path d="M12 7v5l3 2"></path>
+            </svg>
+            生成记录
+          </span>
+          <button type="button" class="icon-btn" id="btnRec" aria-label="刷新记录">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12a9 9 0 0 1-15.5 6.2"></path>
+              <path d="M3 12A9 9 0 0 1 18.5 5.8"></path>
+              <path d="M18 2v5h-5"></path>
+              <path d="M6 22v-5h5"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="records-scroll" id="recordsBox">
+          <p class="empty-note">图片已在服务端归档；刷新记录或生成成功后会自动同步。</p>
+        </div>
+        <div class="history-foot">
+          <button type="button" class="ghost-btn" id="btnClearUi">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18"></path>
+              <path d="M8 6V4h8v2"></path>
+              <path d="M19 6l-1 14H6L5 6"></path>
+            </svg>
+            清空预览
+          </button>
+        </div>
+      </aside>
+
+      <main class="main">
+        <section class="hero-copy">
+          <h1>绘境 <span class="spark">✦</span></h1>
+          <p><span id="typedDesc"></span><span class="typing-caret" aria-hidden="true"></span></p>
+        </section>
+
+        <div class="mode-tabs" role="tablist" aria-label="创作模式">
+          <button type="button" class="mode-tab active" id="tabGenerate" data-work-mode-target="generate" role="tab" aria-selected="true">文生图</button>
+          <button type="button" class="mode-tab" id="tabEdit" data-work-mode-target="edit" role="tab" aria-selected="false">图生图</button>
+        </div>
+
+        <section class="prompt-card panel-shell generate-panel">
+          <div class="prompt-head">
+            <label for="prompt">描述你的画面</label>
+            <span class="count" id="promptCount">0 / 800</span>
+          </div>
+          <div class="prompt-wrap">
+            <textarea id="prompt" maxlength="800">清晨的山谷风景，远处雪山被柔和阳光照亮，近处有湖泊、草地和野花，薄雾漂浮在水面上，画面宁静自然，真实摄影风格，细节清晰，色彩柔和</textarea>
+          </div>
+          <div class="prompt-tools">
+            <div class="tool-group">
+              <button type="button" class="soft-btn" id="btnClearPrompt">清空</button>
+              <span class="count" id="bucketPill">分区 -</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="preview-card panel-shell">
+          <div class="preview-title">
+            <span class="title-left">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v4"></path>
+                <path d="M12 18v4"></path>
+                <path d="M2 12h4"></path>
+                <path d="M18 12h4"></path>
+                <path d="m4.9 4.9 2.8 2.8"></path>
+                <path d="m16.3 16.3 2.8 2.8"></path>
+                <path d="m19.1 4.9-2.8 2.8"></path>
+                <path d="m7.7 16.3-2.8 2.8"></path>
+              </svg>
+              生成预览
+            </span>
+            <button type="button" class="soft-btn" id="btn-download">下载当前图</button>
+          </div>
+          <div class="preview-stage">
+            <img id="heroImg" alt="生成预览" hidden tabindex="0" role="button" aria-label="点击放大预览" />
+            <div class="hero-empty" id="heroEmpty">
+              <div class="empty-icon" aria-hidden="true">
+                <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <rect x="3" y="4" width="18" height="16" rx="3"></rect>
+                  <circle cx="8.5" cy="9" r="1.5"></circle>
+                  <path d="m21 15-5-5L5 20"></path>
+                </svg>
+              </div>
+              <div class="empty-title">你的创作将展示在这里</div>
+              <div>输入描述并点击生成，开始创造你的画面</div>
+            </div>
+          </div>
+          <div class="hero-hint" id="heroHint">等待生成或从左侧记录选择一张图。</div>
+        </section>
+
+        <section class="edit-box panel-shell">
+          <div class="panel-title">
+            <span class="title-left">图生图</span>
+          </div>
+          <div class="edit-prompt-wrap">
+            <textarea id="edit-prompt" placeholder="例如：把背景替换成极光夜空，保留主体姿态和光线方向"></textarea>
+          </div>
+          <div class="field-block source-card">
+            <span class="field-label">编辑来源</span>
+            <div class="seg-grid" style="--cols:2">
+              <label class="seg-option"><input type="radio" name="src" value="saved" /><span>当前预览</span></label>
+              <label class="seg-option"><input type="radio" name="src" value="upload" checked /><span>本地上传</span></label>
+            </div>
+            <div class="file-row" id="wrap-upload">
+              <input type="file" id="image-file" class="visually-hidden" accept="image/*" />
+              <label for="image-file" class="file-trigger action-pulse">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 3v12"></path>
+                  <path d="m7 8 5-5 5 5"></path>
+                  <path d="M5 21h14"></path>
+                </svg>
+                上传图片
+              </label>
+              <span class="file-chip" id="image-file-chip">未选择文件</span>
+            </div>
+          </div>
+          <button type="button" class="primary-btn edit-submit-btn action-pulse" id="btn-edit">✦ 开始编辑</button>
+          <div class="msg" id="msg-edit"></div>
+        </section>
+
+        <section class="mobile-generate-panel panel-shell generate-panel">
+          <div class="panel-title">
+            <span class="title-left">生成设置</span>
+            <button type="button" class="soft-btn mobile-nav-link" data-tab-target="settings">调整</button>
+          </div>
+          <div class="seg-grid" style="--cols:1">
+            <div class="seg-option"><span id="mobileSettingSummary">写实 · 3840x2160 · 高清</span></div>
+          </div>
+          <button type="button" class="primary-btn mobile-generate-btn action-pulse" id="btn-gen" style="margin-top:14px;">✦ 生成图像</button>
+          <div class="msg" id="msg-gen"></div>
+          <div class="cost">消耗 1 积分</div>
+        </section>
+      </main>
+
+      <aside class="settings panel-shell">
+        <div class="panel-title">
+          <span class="title-left">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"></path>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 1 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1A2 2 0 1 1 7.1 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 1 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1a2 2 0 1 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z"></path>
+            </svg>
+            生成设置
+          </span>
+        </div>
+
+        <div class="field-block">
+          <span class="field-label">预设风格</span>
+          <div class="style-grid" id="styleGrid">
+            <label class="style-card">
+              <input type="radio" name="style" value="写实" checked />
+              <img src="/static/xieshi.png" alt="写实风格" />
+              <span>写实</span>
+            </label>
+            <label class="style-card">
+              <input type="radio" name="style" value="科幻" />
+              <img src="/static/keji.png" alt="科幻风格" />
+              <span>科幻</span>
+            </label>
+            <label class="style-card">
+              <input type="radio" name="style" value="国风" />
+              <img src="/static/shanshui.png" alt="国风风格" />
+              <span>国风</span>
+            </label>
+            <label class="style-card">
+              <input type="radio" name="style" value="卡通" />
+              <img src="/static/katong.png" alt="卡通风格" />
+              <span>卡通</span>
+            </label>
+            <label class="style-card">
+              <input type="radio" name="style" value="赛博朋克" />
+              <img src="/static/saibopengke.png" alt="赛博朋克风格" />
+              <span>赛博朋克</span>
+            </label>
+            <label class="style-card">
+              <input type="radio" name="style" value="极简" />
+              <img src="/static/jijian.png" alt="极简风格" />
+              <span>极简</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field-block">
+          <span class="field-label">输出尺寸</span>
+          <div class="seg-grid" style="--cols:3">
+            <label class="seg-option"><input type="radio" name="ratio" value="3840x2160" checked /><span>3840x2160</span></label>
+            <label class="seg-option"><input type="radio" name="ratio" value="1536x1024" /><span>1536x1024</span></label>
+            <label class="seg-option"><input type="radio" name="ratio" value="1024x1024" /><span>1024x1024</span></label>
+          </div>
+        </div>
+
+        <div class="field-block">
+          <span class="field-label">画质</span>
+          <div class="seg-grid" style="--cols:3">
+            <label class="seg-option"><input type="radio" name="quality" value="" /><span>标准</span></label>
+            <label class="seg-option"><input type="radio" name="quality" value="high" checked /><span>高清</span></label>
+            <label class="seg-option"><input type="radio" name="quality" value="hd" /><span>超清</span></label>
+          </div>
+        </div>
+
+        <div class="field-block">
+          <button type="button" class="ghost-btn" id="btnSaveSettings">保存设置</button>
+        </div>
+
+        <div class="field-block">
+          <div class="cost" id="submitSummary">将按写实风格生成 · 3840x2160</div>
+          <div class="cost">消耗 1 积分</div>
+        </div>
+
+      </aside>
+
+      <section class="profile-panel panel-shell">
+        <div class="profile-card">
+          <div class="profile-head">
+            <div class="profile-avatar" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="8" r="4"></circle>
+                <path d="M4 21a8 8 0 0 1 16 0"></path>
+              </svg>
+            </div>
+            <div class="profile-meta">
+              <strong>本地用户</strong>
+              <span id="profileKeyState">未保存密钥</span>
+            </div>
+          </div>
+          <label class="field-label" for="profileApiKeyInput">接口密钥</label>
+          <input type="password" id="profileApiKeyInput" autocomplete="off" placeholder="填写后保存在当前浏览器" />
+          <div class="tool-group" style="margin-top:14px;">
+            <button type="button" class="soft-btn" id="btnProfileSaveKey">保存密钥</button>
+            <button type="button" class="soft-btn" id="btnProfileClearKey">清除</button>
+          </div>
+          <div class="msg" id="msg-profile"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <nav class="mobile-bottom-nav" aria-label="移动端主菜单">
+    <button type="button" class="mobile-nav-btn" data-mobile-tab="records">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M8 8h8M8 12h8M8 16h5"></path></svg>
+      <span>记录</span>
+    </button>
+    <button type="button" class="mobile-nav-btn active" data-mobile-tab="paint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"></rect><path d="m8 13 2.5-3 3 4 2-2.5L21 18"></path></svg>
+      <span>绘境</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-mobile-tab="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21h-4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3v-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1L7.1 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V3h4v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1v4H21a1.7 1.7 0 0 0-1.6 1Z"></path></svg>
+      <span>设置</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-mobile-tab="profile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
+      <span>我的</span>
+    </button>
+  </nav>
+
+  <div class="busy" id="busy" aria-live="polite" aria-hidden="true">
+    <div class="busy-card">
+      <div class="spinner" aria-hidden="true"></div>
+      <strong id="busyTitle">处理中</strong>
+      <p id="busySub" style="margin:10px 0 0;color:var(--muted);line-height:1.6;"></p>
+    </div>
+  </div>
+
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-hidden="true" aria-label="图片预览">
+    <div class="lightbox-inner" id="lightbox-inner">
+      <button type="button" class="lightbox-close" id="lightbox-close" aria-label="关闭预览">×</button>
+      <img id="lightbox-img" src="" alt="大图预览" />
+    </div>
+  </div>
+
+  <div class="key-dialog" id="keyDialog" role="dialog" aria-modal="true" aria-hidden="true" aria-label="配置密钥">
+    <div class="key-card panel-shell">
+      <div class="panel-title">
+        <span>本地密钥</span>
+        <button type="button" class="icon-btn" id="btnCloseKey" aria-label="关闭">×</button>
+      </div>
+      <label class="field-label" for="apiKeyInput">接口密钥</label>
+      <input type="password" id="apiKeyInput" autocomplete="off" placeholder="填写后会保存在当前浏览器" />
+      <div class="tool-group" style="margin-top:14px;">
+        <button type="button" class="soft-btn" id="btnSaveKey">保存密钥</button>
+        <button type="button" class="soft-btn" id="btnClearKey">清除</button>
+      </div>
+      <div class="msg" id="msg-key"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const THEME_KEY = "gpt-image-theme";
+    const API_KEY_STORAGE = "image-console-api-key";
+    const GENERATION_SETTINGS_STORAGE = "image-console-generation-settings";
+    const FALLBACK_THUMB = "/static/示例.png";
+    const RECORD_REFRESH_MS = 5000;
+    const GENERATION_PROGRESS_MS = 60000;
+    const GENERATION_TAIL_MS = 30000;
+    const TYPE_TEXTS = [
+      "将文字想法转化为清晰画面。",
+      "选择风格、尺寸和画质后提交任务。",
+      "生成过程会进入记录列表，稍后即可查看结果。",
+      "也可以上传参考图，进行海报、产品图和视觉方案设计。",
+    ];
+
+    let keyBucket = null;
+    let currentFilename = null;
+    let heroObjectUrl = null;
+    let uploadedPreviewUrl = null;
+    let activeRecordId = null;
+    let recordTimer = null;
+    let toastTimer = null;
+    let generationProgress = null;
+    let handledFailedRecordId = null;
+
+    function api(path) {
+      return path.startsWith("/") ? path : "/" + path;
+    }
+
+    function authHeaders(jsonContentType) {
+      const key = localStorage.getItem(API_KEY_STORAGE) || "";
+      const headers = key ? { "X-API-Key": key } : {};
+      if (jsonContentType) headers["Content-Type"] = "application/json";
+      return headers;
+    }
+
+    async function parseJsonResponse(res) {
+      const text = await res.text();
+      const trimmed = text.trim();
+      if (trimmed.startsWith("<")) {
+        throw new Error("接口返回 HTML 而不是 JSON，请检查 /api/ 反向代理或后端服务。");
+      }
+      try {
+        return JSON.parse(trimmed);
+      } catch (_) {
+        throw new Error("响应不是合法 JSON：" + trimmed.slice(0, 180));
+      }
+    }
+
+    function setTheme(theme) {
+      const isLight = theme === "light";
+      document.documentElement.dataset.theme = isLight ? "light" : "dark";
+      $("btnTheme").setAttribute("aria-checked", String(isLight));
+      $("btnTheme").querySelector(".switch-label").textContent = isLight ? "亮色" : "暗色";
+      try { localStorage.setItem(THEME_KEY, isLight ? "light" : "dark"); } catch (_) {}
+    }
+
+    function initTheme() {
+      const stored = localStorage.getItem(THEME_KEY);
+      setTheme(stored === "dark" ? "dark" : "light");
+      $("btnTheme").addEventListener("click", () => {
+        setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+      });
+    }
+
+    function switchWorkMode(mode) {
+      const next = mode === "edit" ? "edit" : "generate";
+      document.body.dataset.workMode = next;
+      document.querySelectorAll("[data-work-mode-target]").forEach((tab) => {
+        const active = tab.dataset.workModeTarget === next;
+        tab.classList.toggle("active", active);
+        tab.setAttribute("aria-selected", String(active));
+      });
+      if (next === "edit") {
+        if (!currentFilename && !$("image-file").files[0]) {
+          document.querySelectorAll('input[name="src"]').forEach((radio) => {
+            radio.checked = radio.value === "upload";
+          });
+          $("wrap-upload").style.display = "grid";
+        }
+        const hasImage = checkedValue("src") === "upload" ? !!$("image-file").files[0] : !!currentFilename;
+        document.body.classList.toggle("has-edit-image", hasImage);
+        $("heroHint").textContent = $("heroImg").hidden
+          ? "先上传一张图片，或从生成记录选择一张图，再填写你想修改的内容。"
+          : "可以基于当前预览图进行修改，也可以上传另一张本地图片。";
+      }
+    }
+
+    function setBusy(on, title, sub) {
+      $("busy").classList.toggle("active", on);
+      $("busy").setAttribute("aria-hidden", String(!on));
+      $("busyTitle").textContent = title || "处理中";
+      $("busySub").textContent = sub || "";
+    }
+
+    function showMsg(el, text, kind) {
+      if (!el) return;
+      el.className = "msg";
+      if (!text) {
+        el.style.display = "none";
+        el.textContent = "";
+        return;
+      }
+      el.textContent = text;
+      el.classList.add(kind === "ok" ? "ok" : "err");
+    }
+
+    function showToast(text) {
+      const toast = $("toast");
+      toast.textContent = text;
+      toast.classList.add("show");
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    function showTopAlert(text) {
+      const alert = $("topAlert");
+      if (!text) {
+        alert.classList.remove("show");
+        alert.textContent = "";
+        return;
+      }
+      alert.textContent = text;
+      alert.classList.add("show");
+      alert.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function revokeHero() {
+      if (heroObjectUrl) {
+        URL.revokeObjectURL(heroObjectUrl);
+        heroObjectUrl = null;
+      }
+    }
+
+    function revokeUploadedPreview() {
+      if (uploadedPreviewUrl) {
+        URL.revokeObjectURL(uploadedPreviewUrl);
+        uploadedPreviewUrl = null;
+      }
+    }
+
+    function updatePromptCount() {
+      $("promptCount").textContent = `${$("prompt").value.length} / 800`;
+    }
+
+    function highlightTextInput(inputId) {
+      const input = $(inputId);
+      const wrap = input.closest(".prompt-wrap, .edit-prompt-wrap");
+      if (!wrap) return;
+      wrap.classList.remove("attention");
+      void wrap.offsetWidth;
+      wrap.classList.add("attention");
+      input.focus();
+      wrap.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => wrap.classList.remove("attention"), 3600);
+    }
+
+    function highlightPromptInput() {
+      highlightTextInput("prompt");
+    }
+
+    function checkedValue(name) {
+      const el = document.querySelector(`input[name="${name}"]:checked`);
+      return el ? el.value : "";
+    }
+
+    function setCheckedValue(name, value) {
+      const el = Array.from(document.querySelectorAll(`input[name="${name}"]`)).find((item) => item.value === value);
+      if (el) el.checked = true;
+    }
+
+    function currentStylePrompt() {
+      const el = document.querySelector('input[name="style"]:checked');
+      return el ? el.value || "" : "";
+    }
+
+    function currentRatioLabel() {
+      const el = document.querySelector('input[name="ratio"]:checked');
+      return el && el.nextElementSibling ? el.nextElementSibling.textContent.trim() : "";
+    }
+
+    function buildPrompt() {
+      const base = $("prompt").value.trim();
+      const style = currentStylePrompt();
+      const suffix = style ? `#按${style}风格生成` : "";
+      if (!suffix || base.includes(suffix)) return base;
+      return `${base}\n${suffix}`;
+    }
+
+    function updateSubmitSummary() {
+      const style = currentStylePrompt() || "默认";
+      const ratio = currentRatioLabel() || checkedValue("ratio") || "默认尺寸";
+      const quality = currentQualityLabel();
+      $("submitSummary").textContent = `将按${style}风格生成 · ${ratio}`;
+      $("mobileSettingSummary").textContent = `${style} · ${ratio} · ${quality}`;
+    }
+
+    function currentQualityLabel() {
+      const el = document.querySelector('input[name="quality"]:checked');
+      return el && el.nextElementSibling ? el.nextElementSibling.textContent.trim() : "标准";
+    }
+
+    function saveGenerationSettings(notify = true) {
+      const settings = {
+        style: checkedValue("style"),
+        ratio: checkedValue("ratio"),
+        quality: checkedValue("quality"),
+      };
+      localStorage.setItem(GENERATION_SETTINGS_STORAGE, JSON.stringify(settings));
+      updateSubmitSummary();
+      if (notify) {
+        showMsg($("msg-gen"), "生成设置已保存", "ok");
+        showToastMessage("生成设置已保存");
+      }
+    }
+
+    function showToastMessage(text) {
+      showToast(text);
+    }
+
+    function restoreGenerationSettings() {
+      try {
+        const settings = JSON.parse(localStorage.getItem(GENERATION_SETTINGS_STORAGE) || "{}");
+        if (settings.style) setCheckedValue("style", settings.style);
+        if (settings.ratio) setCheckedValue("ratio", settings.ratio);
+        if (Object.prototype.hasOwnProperty.call(settings, "quality")) setCheckedValue("quality", settings.quality);
+      } catch (_) {}
+    }
+
+    function showUploadedPreview(file) {
+      if (!file) return;
+      stopGenerationProgress();
+      revokeHero();
+      revokeUploadedPreview();
+      uploadedPreviewUrl = URL.createObjectURL(file);
+      document.body.classList.remove("has-task-preview");
+      currentFilename = null;
+      activeRecordId = null;
+      $("heroImg").src = uploadedPreviewUrl;
+      $("heroImg").hidden = false;
+      $("heroEmpty").style.display = "none";
+      document.body.classList.add("has-edit-image");
+      $("heroHint").textContent = "已加载本地原图。填写编辑指令后，可以基于这张图片进行修改或借鉴。";
+      switchWorkMode("edit");
+      document.querySelectorAll('input[name="src"]').forEach((radio) => {
+        radio.checked = radio.value === "upload";
+      });
+      $("wrap-upload").style.display = "grid";
+    }
+
+    function bindFileChip(inputId, chipId) {
+      const input = $(inputId);
+      const chip = $(chipId);
+      const update = () => {
+        const file = input.files && input.files[0];
+        chip.textContent = file ? file.name : "未选择文件";
+        if (file && inputId === "image-file") {
+          showToast(`已选择原图：${file.name}`);
+          showUploadedPreview(file);
+        }
+      };
+      input.addEventListener("change", update);
+      update();
+    }
+
+    function initTypingDescription() {
+      const target = $("typedDesc");
+      let phraseIndex = 0;
+      let charIndex = 0;
+      let deleting = false;
+
+      const tick = () => {
+        const phrase = TYPE_TEXTS[phraseIndex];
+        target.textContent = phrase.slice(0, charIndex);
+        if (!deleting && charIndex < phrase.length) {
+          charIndex += 1;
+          setTimeout(tick, 72);
+          return;
+        }
+        if (!deleting) {
+          deleting = true;
+          setTimeout(tick, 1400);
+          return;
+        }
+        if (charIndex > 0) {
+          charIndex -= 1;
+          setTimeout(tick, 34);
+          return;
+        }
+        deleting = false;
+        phraseIndex = (phraseIndex + 1) % TYPE_TEXTS.length;
+        setTimeout(tick, 260);
+      };
+
+      tick();
+    }
+
+    function initKeyDialog() {
+      const input = $("apiKeyInput");
+      input.value = localStorage.getItem(API_KEY_STORAGE) || "";
+      $("btnKey").addEventListener("click", () => {
+        input.value = localStorage.getItem(API_KEY_STORAGE) || "";
+        $("keyDialog").classList.add("open");
+        $("keyDialog").setAttribute("aria-hidden", "false");
+        input.focus();
+      });
+      $("btnCloseKey").addEventListener("click", closeKeyDialog);
+      $("keyDialog").addEventListener("click", (event) => {
+        if (event.target === $("keyDialog")) closeKeyDialog();
+      });
+      $("btnSaveKey").addEventListener("click", () => {
+        const key = input.value.trim();
+        if (!key) {
+          showMsg($("msg-key"), "请先填写密钥", "err");
+          return;
+        }
+        localStorage.setItem(API_KEY_STORAGE, key);
+        showMsg($("msg-key"), "密钥已保存到当前浏览器", "ok");
+        showToast("密钥已保存");
+        syncProfileKeyState();
+        loadRecords();
+      });
+      $("btnClearKey").addEventListener("click", () => {
+        localStorage.removeItem(API_KEY_STORAGE);
+        input.value = "";
+        showMsg($("msg-key"), "已清除本地密钥", "ok");
+        showToast("密钥已清除");
+        syncProfileKeyState();
+      });
+    }
+
+    function closeKeyDialog() {
+      $("keyDialog").classList.remove("open");
+      $("keyDialog").setAttribute("aria-hidden", "true");
+      showMsg($("msg-key"), "", "");
+    }
+
+    function syncProfileKeyState() {
+      const key = localStorage.getItem(API_KEY_STORAGE) || "";
+      $("profileApiKeyInput").value = key;
+      $("profileKeyState").textContent = key ? "密钥已保存在当前浏览器" : "未保存密钥";
+    }
+
+    function saveApiKeyFromInput(inputId, msgId) {
+      const key = $(inputId).value.trim();
+      if (!key) {
+        showMsg($(msgId), "请先填写密钥", "err");
+        return;
+      }
+      localStorage.setItem(API_KEY_STORAGE, key);
+      syncProfileKeyState();
+      showMsg($(msgId), "密钥已保存到当前浏览器", "ok");
+      showToast("密钥已保存");
+      loadRecords();
+    }
+
+    function clearApiKeyFromProfile() {
+      localStorage.removeItem(API_KEY_STORAGE);
+      syncProfileKeyState();
+      showMsg($("msg-profile"), "已清除本地密钥", "ok");
+      showToast("密钥已清除");
+    }
+
+    function switchMobileTab(tab) {
+      document.body.dataset.mobileTab = tab;
+      document.querySelectorAll(".mobile-nav-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.mobileTab === tab);
+      });
+      if (tab === "records") loadRecords({ silent: true });
+      if (tab === "profile") syncProfileKeyState();
+    }
+
+    function formatTs(ts) {
+      if (!ts) return "";
+      const d = new Date(ts);
+      return Number.isNaN(d.getTime()) ? String(ts) : d.toLocaleString();
+    }
+
+    function thumbUrl(bucket, filename) {
+      return api(`/api/files/${encodeURIComponent(bucket)}/${encodeURIComponent(filename)}`);
+    }
+
+    async function fetchThumbBlob(bucket, filename) {
+      const res = await fetch(thumbUrl(bucket, filename), { headers: authHeaders(false) });
+      if (!res.ok) return null;
+      return await res.blob();
+    }
+
+    async function showHeroFromServer(bucket, filename) {
+      if (!bucket || !filename) return;
+      document.body.classList.add("has-edit-image");
+      document.body.classList.add("has-task-preview");
+      setBusy(true, "加载预览", "正在拉取图像数据...");
+      try {
+        const res = await fetch(thumbUrl(bucket, filename), { headers: authHeaders(false) });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`预览失败 HTTP ${res.status} ${text.slice(0, 100)}`);
+        }
+        const blob = await res.blob();
+        revokeHero();
+        revokeUploadedPreview();
+        heroObjectUrl = URL.createObjectURL(blob);
+        $("heroImg").src = heroObjectUrl;
+        $("heroImg").hidden = false;
+        $("heroEmpty").style.display = "none";
+        $("heroHint").textContent = `当前图：${filename}`;
+      } catch (error) {
+        $("heroHint").textContent = String(error.message || error);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function clearPreview() {
+      document.body.classList.remove("has-edit-image");
+      document.body.classList.remove("has-task-preview");
+      revokeHero();
+      revokeUploadedPreview();
+      currentFilename = null;
+      activeRecordId = null;
+      $("heroImg").removeAttribute("src");
+      $("heroImg").hidden = true;
+      $("heroEmpty").style.display = "grid";
+      showEmptyPreview();
+      $("heroHint").textContent = "等待生成或从左侧记录选择一张图。";
+      document.querySelectorAll(".rec-item").forEach((item) => item.classList.remove("active"));
+    }
+
+    function toggleHistory(open) {
+      $("aside").classList.toggle("open", open);
+    }
+
+    function stopGenerationProgress() {
+      if (generationProgress?.timer) clearInterval(generationProgress.timer);
+      generationProgress = null;
+    }
+
+    function isEditTask() {
+      return generationProgress?.taskKind === "edit" || document.body.dataset.workMode === "edit";
+    }
+
+    function progressCopy(percent, finishing = false) {
+      const edit = isEditTask();
+      if (finishing) return edit ? "图片已编辑完成，正在整理预览和记录。" : "图片已生成，正在整理预览和记录。";
+      if (percent >= 99) {
+        return edit
+          ? "还在排队或渲染中，可以先离开；编辑完成后会自动保存到生成记录。"
+          : "还在排队或渲染中，可以先离开；图片完成后会自动保存到生成记录。";
+      }
+      if (percent >= 90) return "已经接近完成，最后阶段可能需要多等一会儿。";
+      if (percent >= 60) return edit ? "正在根据编辑指令调整画面细节。" : "正在处理画面细节和清晰度。";
+      if (percent >= 25) return edit ? "模型正在理解编辑指令并处理原图。" : "模型正在理解提示词并构建画面。";
+      return "任务已开始，请保持页面打开以便自动展示结果。";
+    }
+
+    function renderGenerationProgress(percent, finishing = false) {
+      const fill = document.querySelector("[data-generation-progress-fill]");
+      const value = document.querySelector("[data-generation-progress-value]");
+      const note = document.querySelector("[data-generation-progress-note]");
+      const bar = document.querySelector("[data-generation-progress]");
+      const safePercent = Math.max(0, Math.min(100, percent));
+      if (fill) fill.style.width = `${safePercent}%`;
+      if (value) value.textContent = `${Math.round(safePercent)}%`;
+      if (note) note.textContent = progressCopy(safePercent, finishing);
+      if (bar) bar.setAttribute("aria-valuenow", String(Math.round(safePercent)));
+      $("heroHint").textContent = safePercent >= 99
+        ? "图片完成后会自动保存到记录列表，不需要重复提交。"
+        : (isEditTask()
+          ? "编辑完成后会自动切换到图片预览。"
+          : "生成完成后会自动切换到图片预览。");
+    }
+
+    function startGenerationProgress(recordId, taskKind = "generate") {
+      stopGenerationProgress();
+      const startedAt = Date.now();
+      generationProgress = {
+        recordId,
+        taskKind,
+        startedAt,
+        percent: 3,
+        finishing: false,
+        timer: null,
+      };
+      handledFailedRecordId = null;
+      renderGenerationProgress(generationProgress.percent);
+      generationProgress.timer = setInterval(() => {
+        if (!generationProgress || generationProgress.finishing) return;
+        const elapsed = Date.now() - startedAt;
+        let next;
+        if (elapsed <= GENERATION_PROGRESS_MS) {
+          next = 3 + (elapsed / GENERATION_PROGRESS_MS) * 87;
+        } else if (elapsed <= GENERATION_PROGRESS_MS + GENERATION_TAIL_MS) {
+          next = 90 + ((elapsed - GENERATION_PROGRESS_MS) / GENERATION_TAIL_MS) * 9;
+        } else {
+          next = 99;
+        }
+        generationProgress.percent = Math.min(99, Math.max(generationProgress.percent, next));
+        renderGenerationProgress(generationProgress.percent);
+      }, 500);
+    }
+
+    function finishGenerationProgress(onDone) {
+      if (!generationProgress) {
+        if (onDone) onDone();
+        return;
+      }
+      generationProgress.finishing = true;
+      if (generationProgress.timer) clearInterval(generationProgress.timer);
+      const from = generationProgress.percent || 90;
+      const startedAt = Date.now();
+      const duration = from >= 90 ? 1200 : 1800;
+      generationProgress.timer = setInterval(() => {
+        const ratio = Math.min(1, (Date.now() - startedAt) / duration);
+        const eased = 1 - Math.pow(1 - ratio, 3);
+        const next = from + (100 - from) * eased;
+        renderGenerationProgress(next, true);
+        if (ratio >= 1) {
+          stopGenerationProgress();
+          if (onDone) onDone();
+        }
+      }, 80);
+    }
+
+    function showFailedPreview(errorText, taskKind = "generate") {
+      stopGenerationProgress();
+      revokeHero();
+      revokeUploadedPreview();
+      currentFilename = null;
+      $("heroImg").removeAttribute("src");
+      $("heroImg").hidden = true;
+      $("heroEmpty").style.display = "grid";
+      $("heroEmpty").classList.remove("generating");
+      document.body.classList.remove("has-task-preview");
+      const edit = taskKind === "edit";
+      $("heroEmpty").innerHTML = `
+        <div class="empty-icon" aria-hidden="true">!</div>
+        <div class="empty-title">${edit ? "编辑失败" : "生成失败"}</div>
+        <div>${errorText || (edit ? "本次编辑重试后仍未成功，请稍后再试。" : "本次生成重试后仍未成功，请稍后再试。")}</div>
+      `;
+      $("heroHint").textContent = edit
+        ? "已自动重试一次；如果继续失败，请调整编辑指令或稍后重试。"
+        : "已自动重试一次；如果继续失败，请调整提示词或稍后重试。";
+    }
+
+    function showGeneratingPreview(taskKind = "generate") {
+      document.body.classList.add("has-task-preview");
+      if (taskKind === "edit") document.body.classList.add("has-edit-image");
+      revokeHero();
+      if (taskKind !== "edit") revokeUploadedPreview();
+      currentFilename = null;
+      $("heroImg").removeAttribute("src");
+      $("heroImg").hidden = true;
+      $("heroEmpty").style.display = "grid";
+      $("heroEmpty").classList.add("generating");
+      const edit = taskKind === "edit";
+      $("heroEmpty").innerHTML = `
+        <div class="empty-icon" aria-hidden="true"><span class="inline-spinner"></span></div>
+        <div class="empty-title">${edit ? "图像正在编辑中" : "图像正在生成中"}</div>
+        <div class="generation-progress" data-generation-progress role="progressbar" aria-label="${edit ? "编辑进度" : "生成进度"}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="progress-track">
+            <div class="progress-fill" data-generation-progress-fill></div>
+          </div>
+          <div class="progress-meta">
+            <span>预计约 1 分钟</span>
+            <strong data-generation-progress-value>0%</strong>
+          </div>
+          <div class="progress-note" data-generation-progress-note>任务已开始，请保持页面打开以便自动展示结果。</div>
+        </div>
+      `;
+      $("heroHint").textContent = edit
+        ? "编辑完成后会自动切换到图片预览。"
+        : "生成完成后会自动切换到图片预览。";
+    }
+
+    function showEmptyPreview() {
+      stopGenerationProgress();
+      document.body.classList.remove("has-task-preview");
+      $("heroEmpty").classList.remove("generating");
+      $("heroEmpty").innerHTML = `
+        <div class="empty-icon" aria-hidden="true">
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <rect x="3" y="4" width="18" height="16" rx="3"></rect>
+            <circle cx="8.5" cy="9" r="1.5"></circle>
+            <path d="m21 15-5-5L5 20"></path>
+          </svg>
+        </div>
+        <div class="empty-title">你的创作将展示在这里</div>
+        <div>输入描述并点击生成，开始创造你的画面</div>
+      `;
+    }
+
+    async function loadRecords(options = {}) {
+      if (!options.silent) $("recordsBox").innerHTML = '<p class="empty-note">加载中...</p>';
+      try {
+        const res = await fetch(api("/api/records"), { headers: authHeaders(false) });
+        const data = await parseJsonResponse(res);
+        if (!data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+        keyBucket = data.key_bucket;
+        $("bucketPill").textContent = keyBucket ? `分区 ${keyBucket.slice(0, 8)}` : "分区 -";
+        $("bucketPill").title = keyBucket || "";
+
+        const records = Array.isArray(data.records) ? data.records : [];
+        if (!records.length) {
+          $("recordsBox").innerHTML = '<p class="empty-note">暂无记录。生成成功后会自动写入。</p>';
+          return;
+        }
+
+        const frag = document.createDocumentFragment();
+        let activeCompletedRecord = null;
+        records.forEach((rec) => {
+          const item = document.createElement("div");
+          item.className = "rec-item";
+          item.dataset.id = rec.id || "";
+          if (activeRecordId && rec.id === activeRecordId) item.classList.add("active");
+
+          const isPending = rec.status === "pending" || rec.status === "retrying";
+          const isFailed = rec.status === "failed";
+          const thumb = isPending || isFailed ? document.createElement("div") : document.createElement("img");
+          thumb.className = "rec-thumb" + (isPending ? " pending" : isFailed ? " failed" : "");
+          if (isFailed) thumb.textContent = "!";
+          if (!isPending && !isFailed) {
+            thumb.alt = "";
+            thumb.src = FALLBACK_THUMB;
+            if (activeRecordId && rec.id === activeRecordId) activeCompletedRecord = rec;
+          }
+          if (
+            isFailed &&
+            generationProgress &&
+            activeRecordId &&
+            rec.id === activeRecordId &&
+            handledFailedRecordId !== rec.id
+          ) {
+            handledFailedRecordId = rec.id;
+            showFailedPreview(rec.error, rec.kind === "edit" ? "edit" : "generate");
+          }
+
+          const meta = document.createElement("div");
+          meta.className = "rec-meta";
+
+          const kind = document.createElement("div");
+          kind.className = "rec-kind " + (isPending ? "pending" : isFailed ? "failed" : rec.kind === "edit" ? "ed" : "gen");
+          kind.textContent = isPending
+            ? (rec.kind === "edit" ? "编辑中" : "生成中")
+            : isFailed ? "失败" : rec.kind === "edit" ? "编辑" : "完成";
+
+          const prompt = document.createElement("div");
+          prompt.className = "rec-prompt";
+          prompt.textContent = rec.prompt || "";
+
+          const time = document.createElement("div");
+          time.className = "rec-time";
+          time.textContent = formatTs(rec.ts);
+
+          meta.append(kind, prompt, time);
+          item.append(thumb, meta);
+          thumb.addEventListener("click", async (event) => {
+            event.stopPropagation();
+            if (isPending) {
+              const taskKind = rec.kind === "edit" ? "edit" : "generate";
+              showGeneratingPreview(taskKind);
+              startGenerationProgress(rec.id || activeRecordId, taskKind);
+              switchMobileTab("paint");
+              return;
+            }
+            if (isFailed) {
+              showMsg($("msg-gen"), rec.error || "上游接口失败，已记录失败状态", "err");
+              return;
+            }
+            if (!keyBucket || !rec.filename) return;
+            const blob = await fetchThumbBlob(keyBucket, rec.filename);
+            if (blob) openLightbox(URL.createObjectURL(blob));
+          });
+          item.addEventListener("click", async () => {
+            activeRecordId = rec.id || null;
+            currentFilename = rec.filename || null;
+            document.querySelectorAll(".rec-item").forEach((el) => el.classList.remove("active"));
+            item.classList.add("active");
+            if (isPending) {
+              const taskKind = rec.kind === "edit" ? "edit" : "generate";
+              showGeneratingPreview(taskKind);
+              startGenerationProgress(rec.id || activeRecordId, taskKind);
+            } else if (isFailed) {
+              const msgEl = rec.kind === "edit" ? $("msg-edit") : $("msg-gen");
+              showMsg(msgEl, rec.error || "上游接口失败，已记录失败状态", "err");
+              showFailedPreview(rec.error, rec.kind === "edit" ? "edit" : "generate");
+            } else {
+              await showHeroFromServer(keyBucket, currentFilename);
+            }
+            switchMobileTab("paint");
+          });
+
+          frag.appendChild(item);
+
+          // 缩略图需要鉴权，异步拉取后再替换占位图。
+          (async () => {
+            if (!keyBucket || !rec.filename) return;
+            const blob = await fetchThumbBlob(keyBucket, rec.filename);
+            if (blob && thumb instanceof HTMLImageElement) thumb.src = URL.createObjectURL(blob);
+          })();
+        });
+
+        $("recordsBox").innerHTML = "";
+        $("recordsBox").appendChild(frag);
+        if (activeCompletedRecord && generationProgress && generationProgress.recordId === activeCompletedRecord.id) {
+          const doneRecord = activeCompletedRecord;
+          const editDone = doneRecord.kind === "edit";
+          finishGenerationProgress(async () => {
+            currentFilename = doneRecord.filename || null;
+            await showHeroFromServer(keyBucket, currentFilename);
+            const okText = editDone ? "图片已编辑并保存到记录。" : "图片已生成并保存到记录。";
+            showMsg(editDone ? $("msg-edit") : $("msg-gen"), okText, "ok");
+            showToast(okText);
+          });
+        }
+      } catch (error) {
+        $("recordsBox").innerHTML = `<p class="empty-note" style="color:var(--danger);">${String(error.message || error)}</p>`;
+      }
+    }
+
+    function startRecordPolling() {
+      if (recordTimer) clearInterval(recordTimer);
+      recordTimer = setInterval(() => loadRecords({ silent: true }), RECORD_REFRESH_MS);
+    }
+
+    function openLightbox(src) {
+      if (!src) return;
+      $("lightbox-img").src = src;
+      $("lightbox").classList.add("open");
+      $("lightbox").setAttribute("aria-hidden", "false");
+    }
+
+    function closeLightbox() {
+      $("lightbox").classList.remove("open");
+      $("lightbox").setAttribute("aria-hidden", "true");
+      $("lightbox-img").removeAttribute("src");
+    }
+
+    async function downloadCurrent() {
+      try {
+        if (!currentFilename && !heroObjectUrl) {
+          alert("请先生成或从记录中选择一张图");
+          return;
+        }
+        if (heroObjectUrl) {
+          const a = document.createElement("a");
+          a.href = heroObjectUrl;
+          a.download = currentFilename || "image.png";
+          a.click();
+          return;
+        }
+        const res = await fetch(thumbUrl(keyBucket, currentFilename), { headers: authHeaders(false) });
+        if (!res.ok) throw new Error(`下载失败 HTTP ${res.status}`);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = currentFilename || "image.png";
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        alert(String(error.message || error));
+      }
+    }
+
+    async function generateImage() {
+      showMsg($("msg-gen"), "", "");
+      showTopAlert("");
+      const prompt = buildPrompt();
+      if (!prompt) {
+        const text = "先写一句画面描述，再点击生成。可以描述主体、场景、风格和用途。";
+        showMsg($("msg-gen"), text, "err");
+        showToast(text);
+        showTopAlert(text);
+        switchWorkMode("generate");
+        highlightPromptInput();
+        return;
+      }
+
+      const body = {
+        prompt,
+        // 尺寸字段按后端 /api/generate 支持的 size 参数直接传入。
+        size: checkedValue("ratio") || "3840x2160",
+        n: "1",
+      };
+      const quality = checkedValue("quality");
+      if (quality) body.quality = quality;
+
+      const genBtn = $("btn-gen");
+      if (genBtn) genBtn.disabled = true;
+      try {
+        const res = await fetch(api("/api/generate"), {
+          method: "POST",
+          headers: authHeaders(true),
+          body: JSON.stringify(body),
+        });
+        const data = await parseJsonResponse(res);
+        if (!data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+        keyBucket = data.key_bucket || keyBucket;
+        activeRecordId = data.record_id || null;
+        showMsg($("msg-gen"), "", "");
+        showGeneratingPreview("generate");
+        startGenerationProgress(activeRecordId, "generate");
+        await loadRecords();
+      } catch (error) {
+        stopGenerationProgress();
+        showMsg($("msg-gen"), String(error.message || error), "err");
+      } finally {
+        if (genBtn) genBtn.disabled = false;
+      }
+    }
+
+    async function editImage() {
+      showMsg($("msg-edit"), "", "");
+      showTopAlert("");
+      const prompt = $("edit-prompt").value.trim();
+      if (!prompt) {
+        const text = "先写下你想怎么改这张图，例如换背景、改风格、加文字或调整细节。";
+        showMsg($("msg-edit"), text, "err");
+        showToast(text);
+        showTopAlert(text);
+        switchWorkMode("edit");
+        highlightTextInput("edit-prompt");
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append("prompt", prompt);
+      // 编辑接口同样使用后端支持的 size 字段，保持生成与编辑参数一致。
+      fd.append("size", checkedValue("ratio") || "3840x2160");
+      const quality = checkedValue("quality");
+      if (quality) fd.append("quality", quality);
+      fd.append("n", "1");
+
+      if (checkedValue("src") === "upload") {
+        const file = $("image-file").files[0];
+        if (!file) {
+          const text = "请先上传一张原图，上传后会显示在预览区，再提交编辑。";
+          showMsg($("msg-edit"), text, "err");
+          showToast(text);
+          showTopAlert(text);
+          return;
+        }
+        fd.append("image", file);
+      } else {
+        if (!keyBucket || !currentFilename) {
+          const text = "请先从生成记录选择一张图，或切到本地上传后选择原图。";
+          showMsg($("msg-edit"), text, "err");
+          showToast(text);
+          showTopAlert(text);
+          return;
+        }
+        fd.append("use_saved", "1");
+        fd.append("source_filename", currentFilename);
+      }
+
+      const editBtn = $("btn-edit");
+      if (editBtn) editBtn.disabled = true;
+      try {
+        const res = await fetch(api("/api/edit"), {
+          method: "POST",
+          headers: authHeaders(false),
+          body: fd,
+        });
+        const data = await parseJsonResponse(res);
+        if (!data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+        keyBucket = data.key_bucket || keyBucket;
+        activeRecordId = data.record_id || null;
+        showMsg($("msg-edit"), "", "");
+        switchWorkMode("edit");
+        showGeneratingPreview("edit");
+        startGenerationProgress(activeRecordId, "edit");
+        await loadRecords();
+      } catch (error) {
+        stopGenerationProgress();
+        showMsg($("msg-edit"), String(error.message || error), "err");
+      } finally {
+        if (editBtn) editBtn.disabled = false;
+      }
+    }
+
+    function initEvents() {
+      $("prompt").addEventListener("input", updatePromptCount);
+      document.querySelectorAll('input[name="style"], input[name="ratio"], input[name="quality"]').forEach((radio) => {
+        radio.addEventListener("change", () => {
+          updateSubmitSummary();
+          saveGenerationSettings(false);
+        });
+      });
+      $("btnClearPrompt").addEventListener("click", () => {
+        $("prompt").value = "";
+        updatePromptCount();
+      });
+      document.querySelectorAll("[data-work-mode-target]").forEach((tab) => {
+        tab.addEventListener("click", () => switchWorkMode(tab.dataset.workModeTarget));
+      });
+      document.querySelectorAll('input[name="src"]').forEach((radio) => {
+        radio.addEventListener("change", () => {
+          $("wrap-upload").style.display = checkedValue("src") === "upload" ? "grid" : "none";
+          if (checkedValue("src") === "upload") {
+            switchWorkMode("edit");
+            if (!$("image-file").files[0]) document.body.classList.remove("has-edit-image");
+            $("heroHint").textContent = "请选择一张本地图片，上传后会先显示在预览区，再提交编辑。";
+          } else if (currentFilename) {
+            document.body.classList.add("has-edit-image");
+          } else {
+            document.body.classList.remove("has-edit-image");
+          }
+        });
+      });
+      if ($("btn-gen")) $("btn-gen").addEventListener("click", generateImage);
+      document.querySelectorAll(".mobile-generate-btn").forEach((btn) => {
+        btn.addEventListener("click", generateImage);
+      });
+      $("btnSaveSettings").addEventListener("click", () => saveGenerationSettings(true));
+      $("btn-edit").addEventListener("click", editImage);
+      $("btnRec").addEventListener("click", loadRecords);
+      $("btnOpenRec").addEventListener("click", () => switchMobileTab("records"));
+      document.querySelectorAll(".mobile-nav-btn").forEach((btn) => {
+        btn.addEventListener("click", () => switchMobileTab(btn.dataset.mobileTab));
+      });
+      document.querySelectorAll(".mobile-nav-link").forEach((btn) => {
+        btn.addEventListener("click", () => switchMobileTab(btn.dataset.tabTarget));
+      });
+      $("btnProfileSaveKey").addEventListener("click", () => saveApiKeyFromInput("profileApiKeyInput", "msg-profile"));
+      $("btnProfileClearKey").addEventListener("click", clearApiKeyFromProfile);
+      $("btnClearUi").addEventListener("click", clearPreview);
+      $("btn-download").addEventListener("click", downloadCurrent);
+      $("heroImg").addEventListener("click", () => {
+        if (!$("heroImg").hidden) openLightbox($("heroImg").src);
+      });
+      $("lightbox").addEventListener("click", closeLightbox);
+      $("lightbox-inner").addEventListener("click", (event) => event.stopPropagation());
+      $("lightbox-close").addEventListener("click", closeLightbox);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeLightbox();
+          toggleHistory(false);
+          closeKeyDialog();
+        }
+      });
+    }
+
+    (function init() {
+      initTheme();
+      bindFileChip("image-file", "image-file-chip");
+      restoreGenerationSettings();
+      initTypingDescription();
+      initKeyDialog();
+      initEvents();
+      switchWorkMode("generate");
+      updatePromptCount();
+      updateSubmitSummary();
+      syncProfileKeyState();
+      switchMobileTab("paint");
+      loadRecords();
+      startRecordPolling();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+# 示例：80 端口主站 + 绘境子路径（与 index.html 同级 image_gpt/）
+# 若你已有 default.conf，不要整文件覆盖；只把 gpt-image-tool-subpath.inc 里的 location 拷进现有 server。
+#
+# 部署：
+#   sudo cp conf.d/gpt-image-tool-upstream.conf /etc/nginx/conf.d/
+#   sudo cp ../gpt-image-tool-subpath.inc /etc/nginx/snippets/
+#   # 在现有 server { listen 80; } 内：include /etc/nginx/snippets/gpt-image-tool-subpath.inc;
+#   sudo nginx -t && sudo systemctl reload nginx
+#
+# 主站：http://39.105.53.245/
+# 绘境：http://39.105.53.245/image_gpt/
+
+upstream gpt_image_tool_backend {
+    server 127.0.0.1:5050;
+    keepalive 8;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name 39.105.53.245 _;
+
+    # 主站根目录（与 index.html 同级）；按服务器实际路径修改
+    root /var/www/html;
+    index index.html;
+
+    access_log /var/log/nginx/access.log main;
+    error_log  /var/log/nginx/error.log notice;
+
+    client_max_body_size 55m;
+
+    # ---------- 绘境（子路径，静态在 /var/www/html/image_gpt/）----------
+    include /etc/nginx/snippets/gpt-image-tool-subpath.inc;
+
+    # ---------- 原有主站（放最后，兜底 SPA/静态）----------
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

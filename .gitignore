@@ -1,0 +1,19 @@
+.venv/
+.venv-linux-build/
+.sanshu-memory/
+__pycache__/
+*.pyc
+.env
+output/
+build/
+dist/
+*.spec.bak
+*.log
+flask-start.*.log
+
+frontend/node_modules/
+frontend/dist/
+
+# Nginx 部署目录仅保留占位；构建产物用 sync 脚本生成
+deploy/www/*
+!deploy/www/.gitkeep
